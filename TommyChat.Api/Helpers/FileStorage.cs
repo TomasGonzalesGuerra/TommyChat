@@ -1,7 +1,7 @@
 ﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 
-namespace TommyContact.API.Helpers
+namespace TommyChat.API.Helpers
 {
     public class FileStorage(IConfiguration configuration) : IFileStorage
     {

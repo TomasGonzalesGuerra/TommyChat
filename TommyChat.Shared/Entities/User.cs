@@ -16,11 +16,5 @@ namespace TommyChat.Shared.Entities
 
         [Display(Name = "Tipo de usuario")]
         public UserType UserType { get; set; }
-
-
-        public ICollection<FriendShip>? FriendShips { get; set; }
-        public ICollection<GroupMember>? Groups { get; set; }
-        public ICollection<FriendRequest>? SentRequests { get; set; }
-        public ICollection<FriendRequest>? ReceivedRequests { get; set; }
     }
 }

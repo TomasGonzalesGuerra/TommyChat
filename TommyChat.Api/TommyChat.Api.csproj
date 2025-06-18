@@ -22,4 +22,8 @@
     <Folder Include="Controllers\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\TommyChat.Shared\TommyChat.Shared.csproj" />
+  </ItemGroup>
+
 </Project>

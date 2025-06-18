@@ -1,10 +1,10 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using TommyContact.API.Data;
-using TommyContact.Shared.DTOs;
-using TommyContact.Shared.Entities;
+using TommyChat.API.Data;
+using TommyChat.Shared.DTOs;
+using TommyChat.Shared.Entities;
 
-namespace TommyContact.API.Helpers
+namespace TommyChat.API.Helpers
 {
     public class UserHelper(DataContext datacontext, UserManager<User> userManager, RoleManager<IdentityRole> roleManager, SignInManager<User> signInManager) : IUserHelper
     {

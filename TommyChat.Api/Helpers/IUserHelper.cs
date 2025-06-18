@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using TommyContact.Shared.Entities;
-using TommyContact.Shared.DTOs;
+using TommyChat.Shared.Entities;
+using TommyChat.Shared.DTOs;
 
-namespace TommyContact.API.Helpers
+namespace TommyChat.API.Helpers
 {
     public interface IUserHelper
     {

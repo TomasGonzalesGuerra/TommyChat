@@ -1,4 +1,4 @@
-﻿namespace TommyContact.API.Helpers
+﻿namespace TommyChat.API.Helpers
 {
     public interface IFileStorage
     {
