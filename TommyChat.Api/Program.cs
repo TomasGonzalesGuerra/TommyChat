@@ -11,7 +11,6 @@ using TommyChat.Shared.Entities;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers()
     .AddJsonOptions(x => x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -19,7 +18,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<DataContext>(dc => dc.UseSqlServer("name=LocalConnection"));
-//builder.Services.AddTransient<SeedDb>();
+builder.Services.AddTransient<SeedDb>();
 builder.Services.AddIdentity<User, IdentityRole>(x =>
 {
     x.User.RequireUniqueEmail = true;
@@ -45,16 +44,16 @@ builder.Services.AddScoped<IFileStorage, FileStorage>();
 
 var app = builder.Build();
 
-//SeedData(app);
-//void SeedData(WebApplication app)
-//{
-//    IServiceScopeFactory? scopedFactory = app.Services.GetService<IServiceScopeFactory>();
-//    using (IServiceScope? scope = scopedFactory!.CreateScope())
-//    {
-//        SeedDb? service = scope.ServiceProvider.GetService<SeedDb>();
-//        service!.SeedAsync().Wait();
-//    }
-//}
+SeedData(app);
+void SeedData(WebApplication app)
+{
+    IServiceScopeFactory? scopedFactory = app.Services.GetService<IServiceScopeFactory>();
+    using (IServiceScope? scope = scopedFactory!.CreateScope())
+    {
+        SeedDb? service = scope.ServiceProvider.GetService<SeedDb>();
+        service!.SeedAsync().Wait();
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

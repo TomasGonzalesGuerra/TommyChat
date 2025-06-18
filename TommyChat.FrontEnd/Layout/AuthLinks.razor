@@ -5,14 +5,15 @@
 
 <AuthorizeView>
     <Authorized>
+        <MudText Style="margin: auto;" Typo="Typo.body1" Align="Align.Center"> Hey! @userType</MudText>
+        
         @if (!string.IsNullOrEmpty(photoUser))
         {
             <MudAvatar Size="Size.Medium">
                 <MudImage Src="@photoUser" Style="cursor: pointer;"></MudImage>
             </MudAvatar>
         }
-
-        <MudIconButton OnClick="GotoFrontEndPage" Size="Size.Medium" Icon="@Icons.Material.Outlined.AdsClick" Color="Color.Inherit" />
+        <MudText> @userType </MudText>
 
         <MudMenu Dense Size="Size.Medium" Icon="@Icons.Material.Outlined.Settings" Color="Color.Inherit">
             <MudMenuItem OnClick="ShowModalLogOut" ForceLoad Icon="@Icons.Material.TwoTone.Logout" IconColor="Color.Error" Label="Sign Out" />
@@ -38,6 +39,13 @@
             </MudMenu>
         </MudBadge>
     </Authorized>
+
+    <NotAuthorized>
+        <MudContainer Style="width: auto;">
+            <MudIconButton OnClick="ShowModalLogIn" Variant="Variant.Text" Icon="@Icons.Material.Outlined.Person" Color="Color.Inherit" Edge="Edge.End"> Login </MudIconButton>
+            <MudIconButton OnClick="GoToRegister" Variant="Variant.Text" Icon="@Icons.Material.Outlined.AppRegistration" Color="Color.Inherit" Edge="Edge.End"> Register </MudIconButton>
+        </MudContainer>
+    </NotAuthorized>
 </AuthorizeView>
 
 
@@ -98,11 +106,17 @@
         // if (!result!.Canceled) await LoadAsync();
     }
 
+    private void GoToRegister() => _navigationManager.NavigateTo("/Register");
+
+    private void ShowModalLogIn()
+    {
+        var closeOnEscapeKey = new DialogOptions() { CloseOnEscapeKey = true };
+        _dialogService.ShowAsync<Login>("Log In", closeOnEscapeKey);
+    }
+
     private void ShowModalLogOut()
     {
         var closeOnEscapeKey = new DialogOptions() { CloseOnEscapeKey = true };
-        _dialogService.ShowAsync<Logout>("Logout", closeOnEscapeKey);
+        _dialogService.ShowAsync<Logout>("Log Out", closeOnEscapeKey);
     }
-
-    private void GotoFrontEndPage() => _navigationManager.NavigateTo("/HomeFrontEnd");
 }
