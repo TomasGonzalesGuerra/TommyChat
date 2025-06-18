@@ -1,0 +1,30 @@
+﻿@inject ILoginService _loginService
+@inject NavigationManager _navigationManager
+
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h5"> LogoutConfirm </MudText>
+        <MudText Typo="Typo.body2"> LogoutMessage </MudText>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Tertiary" OnClick="CancelAction"> Cancel </MudButton>
+        <MudSpacer />
+        <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="LogoutActionAsync"> Logout </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code{
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private async Task LogoutActionAsync()
+    {
+        await _loginService.LogoutAsync();
+        _navigationManager.NavigateTo("/");
+        CancelAction();
+    }
+
+    private void CancelAction() => MudDialog.Cancel();
+}

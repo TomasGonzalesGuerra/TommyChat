@@ -1,0 +1,31 @@
+﻿<MudNavMenu>
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Rounded.Home"> Home </MudNavLink>
+    <MudDivider />
+
+    <AuthorizeView Roles="SuperAdmin,User">
+        <Authorized>
+            <MudNavLink Href="/UserDashboard" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.VerifiedUser"> User Dashboard </MudNavLink>
+            <MudDivider />
+            <MudNavLink Href="/Groups" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Category"> Grupos </MudNavLink>
+            <MudDivider />
+            <MudNavGroup Title="Ordenes">
+                <MudNavLink Href="/OrdersIndex" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.PointOfSale"> Pedidos </MudNavLink>
+            </MudNavGroup>
+            <MudDivider />
+        </Authorized>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="SuperAdmin">
+        <Authorized>
+            <MudNavGroup Title="Settings">
+                <MudNavLink Href="/UsersIndex" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.People"> Users </MudNavLink>
+                <MudNavLink Href="/Register" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ProductionQuantityLimits"> Register </MudNavLink>
+            </MudNavGroup>
+            <MudDivider />
+            <MudNavLink Href="/Sellers/OrdersIndex" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.PointOfSale"> Mis Ventas </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
+    <MudDivider />
+
+    <MudNavLink Href="/about" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Info"> About </MudNavLink>
+</MudNavMenu>

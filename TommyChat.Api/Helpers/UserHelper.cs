@@ -29,13 +29,15 @@ namespace TommyChat.API.Helpers
 
         public async Task<User> GetUserAsync(string email)
         {
-            User? user = await _datacontext.Users.Include(u => u.Groups).FirstOrDefaultAsync(u => u.Email == email);
+            //User? user = await _datacontext.Users.Include(u => u.Groups).FirstOrDefaultAsync(u => u.Email == email);
+            User? user = await _datacontext.Users.FirstOrDefaultAsync(u => u.Email == email);
             return user!;
         }
 
         public async Task<User> GetUserAsync(Guid userId)
         {
-            User? user = await _datacontext.Users.Include(u => u.Groups).FirstOrDefaultAsync(u => u.Id == userId.ToString());
+            //User? user = await _datacontext.Users.Include(u => u.Groups).FirstOrDefaultAsync(u => u.Id == userId.ToString());
+            User? user = await _datacontext.Users.FirstOrDefaultAsync(u => u.Id == userId.ToString());
             return user!;
         }
     }

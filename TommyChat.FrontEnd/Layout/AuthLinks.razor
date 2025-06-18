@@ -1,0 +1,108 @@
+﻿@inject IRepository _repository
+@inject IDialogService _dialogService
+@inject NavigationManager _navigationManager
+@inject SweetAlertService _sweetAlertService
+
+<AuthorizeView>
+    <Authorized>
+        @if (!string.IsNullOrEmpty(photoUser))
+        {
+            <MudAvatar Size="Size.Medium">
+                <MudImage Src="@photoUser" Style="cursor: pointer;"></MudImage>
+            </MudAvatar>
+        }
+
+        <MudIconButton OnClick="GotoFrontEndPage" Size="Size.Medium" Icon="@Icons.Material.Outlined.AdsClick" Color="Color.Inherit" />
+
+        <MudMenu Dense Size="Size.Medium" Icon="@Icons.Material.Outlined.Settings" Color="Color.Inherit">
+            <MudMenuItem OnClick="ShowModalLogOut" ForceLoad Icon="@Icons.Material.TwoTone.Logout" IconColor="Color.Error" Label="Sign Out" />
+
+            <MudMenu StartIcon="@Icons.Material.TwoTone.Settings" IconColor="Color.Primary" Label="Settings">
+                <MudMenuItem OnClick="GoToEditUser" Icon="@Icons.Material.Outlined.EditNote" IconColor="Color.Success" Label="Ediar" />
+            </MudMenu>
+        </MudMenu>
+
+        <MudBadge Origin="Origin.TopRight" Content="@BadgeContent" Color="Color.Warning" Overlap="true" Style="position: relative;">
+            <MudMenu Dense Size="Size.Medium" Icon="@Icons.Material.Outlined.Notifications" Color="Color.Inherit">
+                <div style="padding:1rem;">
+                    <MudText Typo="Typo.h5"> 🔔 Notificaciones </MudText>
+                    <MudDivider />
+
+                    @foreach (var item in UserNotifications)
+                    {
+                        @* <MudItem>@item.Message - @item.CreatedAt.ToLocalTime() </MudItem> *@
+                    }
+
+                    <MudButton OnClick="@(() => Console.WriteLine("Me Tokaste 😁"))" StartIcon="@Icons.Material.Outlined.Group" Color="Color.Success"> Solicitudes </MudButton>
+                </div>
+            </MudMenu>
+        </MudBadge>
+    </Authorized>
+</AuthorizeView>
+
+
+
+@code {
+    [CascadingParameter]
+    public Task<AuthenticationState> AuthenticationStateTask { get; set; } = null!;
+
+    private bool _loading = true;
+    private int BadgeContent;
+    private string? userType;
+    private string? photoUser;
+    private List<string> UserNotifications = [];
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var authenticationState = await AuthenticationStateTask;
+        var claims = authenticationState.User.Claims.ToList();
+        var photoClaim = claims.FirstOrDefault(x => x.Type == "Photo");
+        var nameClaim = claims.FirstOrDefault(x => x.Type == "UserName");
+        var userTypeClaim = claims.FirstOrDefault(x => x.Type == "UserType");
+
+        if (photoClaim is not null) photoUser = photoClaim.Value;
+        if (userTypeClaim is not null) userType = userTypeClaim.ToString();
+        
+        // await LoadAsync();
+    }
+
+    private void GoToEditUser() => _navigationManager.NavigateTo("/EditUser");
+
+    private async Task LoadAsync()
+    {
+        var authenticationState = await AuthenticationStateTask;
+
+        @if (authenticationState.User.Identity!.IsAuthenticated)
+        {
+            try
+            {
+                // var responseHppt = await _repository.GetAsync<List<Notification>>("/api/Accounts/GetUserAllNotis");
+                // UserNotifications = responseHppt.Response!;
+                // BadgeContent = UserNotifications.Count;
+            }
+            catch (Exception ex)
+            {
+                await _sweetAlertService.FireAsync("Error", ex.Message, SweetAlertIcon.Error);
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ShowPendingRequestsAsync()
+    {
+        // var options = new DialogOptions { CloseOnEscapeKey = true, BackgroundClass = "my-custom-class", MaxWidth = MaxWidth.ExtraLarge };
+        // var dialog = await _dialogService.ShowAsync<FriendRequests>("Solicitudes de Amistad", options);
+        // var result = await dialog.Result;
+        // if (!result!.Canceled) await LoadAsync();
+    }
+
+    private void ShowModalLogOut()
+    {
+        var closeOnEscapeKey = new DialogOptions() { CloseOnEscapeKey = true };
+        _dialogService.ShowAsync<Logout>("Logout", closeOnEscapeKey);
+    }
+
+    private void GotoFrontEndPage() => _navigationManager.NavigateTo("/HomeFrontEnd");
+}

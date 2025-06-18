@@ -1,0 +1,142 @@
+﻿@page "/Register"
+@inject ISnackbar _snackbar
+@inject IRepository _repository
+@inject ILoginService _logInService
+@inject IDialogService _dialogService
+@inject NavigationManager _navigationManager
+@inject SweetAlertService _sweetAlertService
+
+<PageTitle> Registro </PageTitle>
+
+<MudCard Class="p-2">
+    <MudItem>
+        <MudText Typo="Typo.h5"> Registro de Usuarios </MudText>
+    </MudItem>
+
+    <EditForm Model="userDTO">
+        <DataAnnotationsValidator />
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudCardContent>
+                    <MudTextField Label="FullName" @bind-Value="userDTO.FullName" For="@(() => userDTO.FullName)"></MudTextField>                    
+                    <MudTextField Label="PhoneNumber" @bind-Value="userDTO.PhoneNumber" For="@(() => userDTO.PhoneNumber)" InputType="InputType.Telephone"></MudTextField>                    
+                    <MudTextField Label="Email" @bind-Value="userDTO.Email" For="@(() => userDTO.Email)" InputType="InputType.Email"></MudTextField>                    
+                    <MudTextField Label="Password" @bind-Value="userDTO.Password" For="@(() => userDTO.Password)" InputType="InputType.Password"></MudTextField>                    
+                    <MudTextField Label="PasswordConfirm" @bind-Value="userDTO.PasswordConfirm" For="@(() => userDTO.PasswordConfirm)" InputType="InputType.Password"></MudTextField>
+                </MudCardContent>
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudItem xs="12" sm="6">
+                    <InputImg Label=Image ImageSelected="ImageSelected" ImageURL="@imageUrl" />
+                </MudItem>
+            </MudItem>
+
+            <MudStack Class="m-2" Row="true">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" Color="Color.Surface" OnClick="ReturnAction" Class="ms-8">
+                    Return
+                </MudButton>
+
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Check" Color="Color.Success" OnClick="CreateUserAsync">
+                    Registrarse
+                </MudButton>
+            </MudStack>
+        </MudGrid>
+    </EditForm>
+
+    <MudItem xs="12" sm="6">
+        <AuthorizeView Roles="SuperAdmin">
+            <Authorized>
+                <MudSelect @bind-Value="_enumValue"
+                           HelperTextOnFocus="true"
+                           Clearable="true"
+                           Label="Selecciona el Tipo de Usuario"
+                           OpenIcon="@Icons.Material.Filled.VerifiedUser"
+                           AdornmentColor="Color.Primary"
+                           Variant=Variant.Outlined>
+                    @foreach (UserType item in Enum.GetValues(typeof(UserType)))
+                    {
+                        <MudSelectItem Value="@item">@item</MudSelectItem>
+                    }
+                </MudSelect>
+            </Authorized>
+        </AuthorizeView>
+    </MudItem>
+</MudCard>
+
+@code{
+    private UserDTO userDTO = new();
+    private bool loading;
+    private string? imageUrl;
+    private UserType _enumValue { get; set; } = UserType.User;
+
+
+    private void ImageSelected(string imageBase64)
+    {
+        userDTO.Photo = imageBase64;
+        imageUrl = null;
+    }
+
+    private void ReturnAction() => _navigationManager.NavigateTo("/");
+
+    private async Task CreateUserAsync()
+    {
+        if (!ValidateForm()) return;
+
+        userDTO.UserName = userDTO.Email;
+        userDTO.UserType = _enumValue;
+
+        loading = true;
+        var responseHttp = await _repository.PostAsync<UserDTO>("/api/Accounts/CreateUser", userDTO);
+        loading = false;
+
+        if (responseHttp.Error)
+        {
+            var message = await responseHttp.GetErrorMessageAsync();
+            
+            if (message!.Contains("DuplicateUserName"))
+            {
+                _snackbar.Add("EmailAlreadyExists", Severity.Error);
+                return;
+            }
+
+            _snackbar.Add(message, Severity.Error);
+            return;
+        }
+
+        _snackbar.Add("Usuario Creado", Severity.Success);
+        _navigationManager.NavigateTo("/");
+    }
+
+    private bool ValidateForm()
+    {
+        var hasErrors = false;
+        if (string.IsNullOrEmpty(userDTO.FullName))
+        {
+            _snackbar.Add(string.Format("RequiredField", string.Format("FullName")), Severity.Error);
+            hasErrors = true;
+        }
+        if (string.IsNullOrEmpty(userDTO.PhoneNumber))
+        {
+            _snackbar.Add(string.Format("RequiredField", string.Format("PhoneNumber")), Severity.Error);
+            hasErrors = true;
+        }
+        if (string.IsNullOrEmpty(userDTO.Email))
+        {
+            _snackbar.Add(string.Format("RequiredField", string.Format("Email")), Severity.Error);
+            hasErrors = true;
+        }
+        if (string.IsNullOrEmpty(userDTO.Password))
+        {
+            _snackbar.Add(string.Format("RequiredField", string.Format("Password")), Severity.Error);
+            hasErrors = true;
+        }
+        if (string.IsNullOrEmpty(userDTO.PasswordConfirm))
+        {
+            _snackbar.Add(string.Format("RequiredField", string.Format("PasswordConfirm")), Severity.Error);
+            hasErrors = true;
+        }
+
+        return !hasErrors;
+    }
+}

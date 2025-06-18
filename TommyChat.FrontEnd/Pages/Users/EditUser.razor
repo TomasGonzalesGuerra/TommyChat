@@ -1,0 +1,153 @@
+﻿@page "/EditUser"
+@inject ISnackbar _snackbar
+@inject IRepository _repository
+@inject ILoginService _logInService
+@inject IDialogService _dialogService
+@inject NavigationManager _navigationManager
+@inject SweetAlertService _sweetAlertService
+@attribute [Authorize(Roles = "SuperAdmin,User")]
+
+<PageTitle> Edición </PageTitle>
+
+<MudCard Class="p-2">
+    <MudItem>
+        <MudText Typo="Typo.h5"> Registro de Usuarios </MudText>
+        <MudSpacer/>
+        <MudButton OnClick="GoToChangePasswordAsync" Variant="Variant.Outlined" Color="Color.Warning"> Cambiar Contraseña</MudButton>
+    </MudItem>
+
+    <EditForm Model="user">
+        <DataAnnotationsValidator />
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudCardContent>
+                    <MudTextField Label="FullName" @bind-Value="user.FullName" For="@(() => user.FullName)"></MudTextField>
+                    <MudTextField Label="PhoneNumber" @bind-Value="user.PhoneNumber" For="@(() => user.PhoneNumber)" InputType="InputType.Telephone"></MudTextField>
+                    <MudTextField Label="Email" @bind-Value="user.Email" For="@(() => user.Email)" InputType="InputType.Email"></MudTextField>
+                </MudCardContent>
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudItem xs="12" sm="6">
+                    <InputImg Label=Image ImageSelected="ImageSelected" ImageURL="@imageUrl" />
+                </MudItem>
+            </MudItem>
+
+            <MudStack Class="m-2" Row="true">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" Color="Color.Surface" OnClick="ReturnAction" Class="ms-8">
+                    Return
+                </MudButton>
+
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Check" Color="Color.Success" OnClick="SaveUserAsync">
+                    Guardar
+                </MudButton>
+            </MudStack>
+        </MudGrid>
+    </EditForm>
+
+    <MudItem xs="12" sm="6">
+        <AuthorizeView Roles="SuperAdmin">
+            <Authorized>
+                <MudSelect @bind-Value="_enumValue"
+                           HelperTextOnFocus="true"
+                           Clearable="true"
+                           Label="Selecciona el Tipo de Usuario"
+                           OpenIcon="@Icons.Material.Filled.VerifiedUser"
+                           AdornmentColor="Color.Primary"
+                           Variant=Variant.Outlined>
+                    @foreach (UserType item in Enum.GetValues(typeof(UserType)))
+                    {
+                        <MudSelectItem Value="@item">@item</MudSelectItem>
+                    }
+                </MudSelect>
+            </Authorized>
+        </AuthorizeView>
+    </MudItem>
+</MudCard>
+
+@code {
+    private User user = new();
+    private bool loading;
+    private string? imageUrl;
+    private UserType _enumValue { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserAsyc();
+
+        if (!string.IsNullOrEmpty(user!.Photo))
+        {
+            imageUrl = user.Photo;
+            user.Photo = null;
+        }
+    }
+
+    private async Task LoadUserAsyc()
+    {
+        var responseHTTP = await _repository.GetAsync<User>($"/api/accounts/profile");
+
+        if (responseHTTP.Error)
+        {
+            if (responseHTTP.HttpResponseMessage.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _navigationManager.NavigateTo("/");
+                return;
+            }
+
+            var messageError = await responseHTTP.GetErrorMessageAsync();
+            await _sweetAlertService.FireAsync("Error", messageError, SweetAlertIcon.Error);
+            return;
+        }
+
+        user = responseHTTP.Response!;
+        _enumValue = user.UserType;
+    }
+
+    private void ImageSelected(string imageBase64)
+    {
+        user.Photo = imageBase64;
+        imageUrl = null;
+    }
+
+    private async Task SaveUserAsync()
+    {
+        if (!ValidateForm()) return;
+
+        var responseHttp = await _repository.PutAsync<User>("/api/accounts", user!);
+        
+        if (responseHttp.Error)
+        {
+            var message = await responseHttp.GetErrorMessageAsync();
+            await _sweetAlertService.FireAsync("Error", message, SweetAlertIcon.Error);
+            return;
+        }
+
+        _navigationManager.NavigateTo("/");
+
+    }
+
+    private void ReturnAction() => _navigationManager.NavigateTo("/");
+    private void GoToChangePasswordAsync() => _navigationManager.NavigateTo("/ChangePassword");
+
+    private bool ValidateForm()
+    {
+        var hasErrors = false;
+        if (string.IsNullOrEmpty(user.FullName))
+        {
+            _snackbar.Add(string.Format("RequiredField", string.Format("FullName")), Severity.Error);
+            hasErrors = true;
+        }
+        if (string.IsNullOrEmpty(user.PhoneNumber))
+        {
+            _snackbar.Add(string.Format("RequiredField", string.Format("PhoneNumber")), Severity.Error);
+            hasErrors = true;
+        }
+        if (string.IsNullOrEmpty(user.Email))
+        {
+            _snackbar.Add(string.Format("RequiredField", string.Format("Email")), Severity.Error);
+            hasErrors = true;
+        }
+
+        return !hasErrors;
+    }
+}
