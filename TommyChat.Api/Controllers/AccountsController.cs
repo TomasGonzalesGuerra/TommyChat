@@ -87,7 +87,7 @@ namespace TommyChat.API.Controllers
         }
 
 
-        [HttpGet("profile")]
+        [HttpGet("Profile")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         public async Task<ActionResult> GetProfile()
         {

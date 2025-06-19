@@ -1,21 +1,28 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 
-namespace TommyChat.Api.Hubs
-{
-    public class NotifyHub : Hub
-    {
-        public async Task SendMessage(string user, string message)
-        {
-            await Clients.All.SendAsync("ReceiveMessage", user, message);
-        }
+namespace TommyChat.Api.Hubs;
 
-        public override async Task OnConnectedAsync()
+public class NotifyHub : Hub
+{
+    public override async Task OnConnectedAsync()
+    {
+        await Clients.All.SendAsync("AllClientsNotify", $"{Context.ConnectionId} - Te Conectaste");
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        await Clients.All.SendAsync("AllClientsNotify", $"{Context.ConnectionId} - Arrugaste - {exception}");
+    }
+
+    public async Task SendMessageToUserAsync(string receiverUserId, string message)
+    {
+        string? senderId = Context.UserIdentifier;
+
+        if (!string.IsNullOrEmpty(senderId))
         {
-            await Clients.All.SendAsync("AllClientsNotify", $"{Context.ConnectionId} - ConnectedAsync");
-        }
-        public override async Task OnDisconnectedAsync(Exception? exception)
-        {
-            await Clients.All.SendAsync("AllClientsNotify", $"{Context.ConnectionId} - DisconnectedAsync - {exception}");
+            await Clients.User(receiverUserId).SendAsync("SendMessageToUserAsync", senderId, message);
         }
     }
+
+
 }

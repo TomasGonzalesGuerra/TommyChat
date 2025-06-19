@@ -59,4 +59,11 @@ public class NotifyService
             ConnectionStateChanged?.Invoke();
         }
     }
+
+    public async Task SendMessageToUserAsync(string targetUserId, string messageText)
+    {
+        await StartConnectionAsync();
+        await _hubConnection.SendAsync("SendMessageToUserAsync", targetUserId, messageText);
+    }
+
 }

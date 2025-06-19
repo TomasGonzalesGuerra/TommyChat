@@ -1,33 +1,60 @@
 ﻿@page "/Chats"
 @using Microsoft.AspNetCore.SignalR.Client
 @using TommyChat.FrontEnd.Services
+@inject IRepository _repository
 @inject NotifyService _notifyService
+@inject NavigationManager _navigationManager
+@inject SweetAlertService _sweetAlertService
+@attribute [Authorize(Roles = "SuperAdmin,User")]
 
 <PageTitle>Chats</PageTitle>
 
-<a @onclick="Connect" class="btn btn-success">Connect</a>
-<a @onclick="Disconnect" class="btn btn-danger">Disconnect</a>
+<MudPaper Class="pa-5 ma-5">
+    <div class="form-group">
+        <label>
+            Message:
+            <input @bind="messageInput" size="50" />
+        </label>
+    </div>
 
-<div>
-    @if (Messages != null)
-    {
-        <ul>
-            @foreach (var message in Messages)
-            {
-                <li>@message</li>
-            }
-        </ul>
-    }
-</div>
+    <MudButton OnClick="SendMessage" Disabled = "@(!IsConnected)" Variant="Variant.Outlined" Color="Color.Success"> Enviar </MudButton>
 
+    <hr>
+
+    <ul id="Conversations List">
+        @foreach (var item in Conversations)
+        {
+            <li>@item</li>
+        }
+    </ul>
+</MudPaper>
 <MudTHeadRow />
+<MudPaper Class="pa-5 ma-5">
+    <MudButton OnClick="Connect" Variant="Variant.Outlined" Color="Color.Success"> Connect </MudButton>
+    <MudButton OnClick="Disconnect" Variant="Variant.Outlined" Color="Color.Error"> Disconnect </MudButton>
 
-<MudText> @_notifyService.ConnectionState.ToString() </MudText>
+    <div>
+        @if (Messages != null)
+        {
+            <ul>
+                @foreach (var message in Messages)
+                {
+                    <li>@message</li>
+                }
+            </ul>
+        }
+    </div>
+
+    <MudText> @_notifyService.ConnectionState.ToString() </MudText>
+</MudPaper>
+<MudTHeadRow />
 
 
 @code {
-    HubConnection? ClientHubConnection;
-    public List<string> Messages = [];
+    private User User = new();
+    private string? messageInput;
+    private List<string> Messages = [];
+    private List<string> Conversations = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -35,13 +62,53 @@
         _notifyService._hubConnection.On<string>("AllClientsNotify", (statement) =>
         {
             Messages.Add(statement);
-            StateHasChanged();
+            InvokeAsync(() => StateHasChanged());
         });
 
         await Connect();
+        await LoadUserAsyc();
+    }
+
+    private async Task LoadUserAsyc()
+    {
+        var responseHTTP = await _repository.GetAsync<User>($"/api/Accounts/Profile");
+
+        if (responseHTTP.Error)
+        {
+            if (responseHTTP.HttpResponseMessage.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _navigationManager.NavigateTo("/");
+                return;
+            }
+
+            var messageError = await responseHTTP.GetErrorMessageAsync();
+            await _sweetAlertService.FireAsync("Error", messageError, SweetAlertIcon.Error);
+            return;
+        }
+
+        User = responseHTTP.Response!;
     }
 
     public async Task Connect() => await _notifyService.StartConnectionAsync();
     public async Task Disconnect() => await _notifyService.CloseConnectionAsync();
-    // public async Task Dispose() => _notifyService.ConnectionStateChanged -= StateHasChanged();
+    public bool IsConnected => _notifyService._hubConnection.State == HubConnectionState.Connected;
+
+    public async Task SendMessage()
+    {
+        await Connect();
+        string targetUserId = "b32f30e8-5dfd-4eaa-93b3-2e4561b98851";
+        Console.WriteLine($"User: {targetUserId}");
+        Console.WriteLine($"Input: {messageInput}");
+        await _notifyService.SendMessageToUserAsync(targetUserId, messageInput!);
+    }
+
+
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_notifyService._hubConnection is not null)
+        {
+            await _notifyService._hubConnection.DisposeAsync();
+        }
+    }
 }
