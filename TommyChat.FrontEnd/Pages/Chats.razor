@@ -1,0 +1,47 @@
+﻿@page "/Chats"
+@using Microsoft.AspNetCore.SignalR.Client
+@using TommyChat.FrontEnd.Services
+@inject NotifyService _notifyService
+
+<PageTitle>Chats</PageTitle>
+
+<a @onclick="Connect" class="btn btn-success">Connect</a>
+<a @onclick="Disconnect" class="btn btn-danger">Disconnect</a>
+
+<div>
+    @if (Messages != null)
+    {
+        <ul>
+            @foreach (var message in Messages)
+            {
+                <li>@message</li>
+            }
+        </ul>
+    }
+</div>
+
+<MudTHeadRow />
+
+<MudText> @_notifyService.ConnectionState.ToString() </MudText>
+
+
+@code {
+    HubConnection? ClientHubConnection;
+    public List<string> Messages = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _notifyService.ConnectionStateChanged += StateHasChanged;
+        _notifyService._hubConnection.On<string>("AllClientsNotify", (statement) =>
+        {
+            Messages.Add(statement);
+            StateHasChanged();
+        });
+
+        await Connect();
+    }
+
+    public async Task Connect() => await _notifyService.StartConnectionAsync();
+    public async Task Disconnect() => await _notifyService.CloseConnectionAsync();
+    // public async Task Dispose() => _notifyService.ConnectionStateChanged -= StateHasChanged();
+}

@@ -7,6 +7,8 @@ using System.Text.Json.Serialization;
 using TommyChat.API.Data;
 using TommyChat.API.Helpers;
 using TommyChat.Shared.Entities;
+using Microsoft.AspNetCore.ResponseCompression;
+using TommyChat.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,18 +43,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         ClockSkew = TimeSpan.Zero
     });
 builder.Services.AddScoped<IFileStorage, FileStorage>();
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
 SeedData(app);
-void SeedData(WebApplication app)
+static void SeedData(WebApplication app)
 {
     IServiceScopeFactory? scopedFactory = app.Services.GetService<IServiceScopeFactory>();
-    using (IServiceScope? scope = scopedFactory!.CreateScope())
-    {
-        SeedDb? service = scope.ServiceProvider.GetService<SeedDb>();
-        service!.SeedAsync().Wait();
-    }
+    using IServiceScope? scope = scopedFactory!.CreateScope();
+    SeedDb? service = scope.ServiceProvider.GetService<SeedDb>();
+    service!.SeedAsync().Wait();
 }
 
 // Configure the HTTP request pipeline.
@@ -66,10 +67,12 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+    //.WithOrigins("https://localhost:7177")
 app.UseCors(x => x
-.AllowAnyMethod()
-.AllowAnyHeader()
-.SetIsOriginAllowed(origin => true)
-.AllowCredentials());
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    .SetIsOriginAllowed(origin => true)
+    .AllowCredentials());
+app.MapHub<NotifyHub>("/NotifyHub");
 
 app.Run();

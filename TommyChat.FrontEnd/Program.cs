@@ -7,6 +7,7 @@ using MudBlazor.Services;
 using TommyChat.FrontEnd;
 using TommyChat.FrontEnd.Auth;
 using TommyChat.FrontEnd.Repositories;
+using TommyChat.FrontEnd.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -31,6 +32,6 @@ builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<AuthenticationProviderJWT>();
 builder.Services.AddScoped<AuthenticationStateProvider, AuthenticationProviderJWT>(x => x.GetRequiredService<AuthenticationProviderJWT>());
 builder.Services.AddScoped<ILoginService, AuthenticationProviderJWT>(x => x.GetRequiredService<AuthenticationProviderJWT>());
-
+builder.Services.AddScoped<NotifyService>();
 
 await builder.Build().RunAsync();
