@@ -1,11 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using TommyChat.Api.Hubs;
 using TommyChat.API.Data;
 using TommyChat.API.Helpers;
 using TommyChat.Shared.DTOs;
@@ -16,12 +18,13 @@ namespace TommyChat.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AccountsController(DataContext datacontext, IUserHelper userHelper, IConfiguration configuration, IFileStorage fileStorage) : ControllerBase
+    public class AccountsController(DataContext datacontext, IUserHelper userHelper, IConfiguration configuration, IFileStorage fileStorage, UserManager<User> userManager) : ControllerBase
     {
         private readonly DataContext _dataContext = datacontext;
         private readonly IUserHelper _userHelper = userHelper;
         private readonly IConfiguration _configuration = configuration;
         private readonly IFileStorage _fileStorage = fileStorage;
+        private readonly UserManager<User> _userManager = userManager;
         private readonly string _container = "users";
 
         [HttpPost("CreateUser")]
@@ -66,7 +69,8 @@ namespace TommyChat.API.Controllers
             {
                 new(ClaimTypes.Name,  user.Email!),
                 new(ClaimTypes.Role,  user.UserType.ToString()),
-                new("FullName",  user.FullName),
+                new(ClaimTypes.NameIdentifier, user.Id),
+                new("FullName",  user.FullName!),
                 new("Photo",  user.Photo  ??  string.Empty),
             };
 
@@ -94,6 +98,14 @@ namespace TommyChat.API.Controllers
             var user = await _userHelper.GetUserAsync(User.Identity!.Name!);
             if (user == null) return Unauthorized("User not authenticated.");
             return Ok(user);
+        }
+
+        [HttpGet("UsersNames")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var users = await _userManager.Users.Select(u => new { u.Id, u.UserName }).ToListAsync();
+            return Ok(users);
         }
 
         [HttpPut]
@@ -146,13 +158,9 @@ namespace TommyChat.API.Controllers
             }
         }
 
-        [HttpGet("AllUsers")]
-        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<IActionResult> GetAllUsers()
-        {
-            List<User> AllUsers = await _dataContext.Users.Where(u => u.UserType == UserType.User).ToListAsync();
-            return Ok(AllUsers);
-        }
+
+
+
 
 
         //[HttpGet("GetUserAllNotis")]

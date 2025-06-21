@@ -1,12 +1,28 @@
-﻿using Microsoft.AspNetCore.SignalR.Client;
+﻿using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
+using Microsoft.AspNetCore.SignalR.Client;
 
+//IAccessTokenProvider TokenProvider
 namespace TommyChat.FrontEnd.Services;
 
-public class NotifyService
+public class NotifyService()
 {
     public event Action? ConnectionStateChanged;
     public string? ConnectionState = string.Empty;
-    public readonly HubConnection _hubConnection = new HubConnectionBuilder().WithUrl("https://localhost:7067/NotifyHub").Build();
+    public readonly HubConnection _hubConnection = new HubConnectionBuilder()
+        .WithUrl("https://localhost:7067/NotifyHub",options =>
+        {
+            //options.AccessTokenProvider = async () =>
+            //{
+            //    var result = await TokenProvider.RequestAccessToken();
+            //    if (result.TryGetToken(out var token))
+            //    {
+            //        return token.Value;
+            //    }
+            //    return null;
+            //};
+        })
+        .WithAutomaticReconnect()
+        .Build();
 
     public async Task StartConnectionAsync()
     {
@@ -59,11 +75,12 @@ public class NotifyService
             ConnectionStateChanged?.Invoke();
         }
     }
-
-    public async Task SendMessageToUserAsync(string targetUserId, string messageText)
+    
+    public async Task SendPrivateMessageAsync(string senderUserId, string receiverUserId, string message)
     {
-        await StartConnectionAsync();
-        await _hubConnection.SendAsync("SendMessageToUserAsync", targetUserId, messageText);
+        await _hubConnection.SendAsync("SendPrivateMessage", senderUserId, receiverUserId, message);
     }
+
+
 
 }

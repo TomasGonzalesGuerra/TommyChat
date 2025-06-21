@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -33,17 +33,39 @@ builder.Services.AddIdentity<User, IdentityRole>(x =>
 .AddEntityFrameworkStores<DataContext>().AddDefaultTokenProviders();
 builder.Services.AddScoped<IUserHelper, UserHelper>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(x => x.TokenValidationParameters = new TokenValidationParameters
+    .AddJwtBearer(x =>
     {
-        ValidateIssuer = false,
-        ValidateAudience = false,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["jwtKey"]!)),
-        ClockSkew = TimeSpan.Zero
+        x.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["jwtKey"]!)),
+            ClockSkew = TimeSpan.Zero,
+        };
+        // 👇 Esta parte es clave para SignalR
+        //x.Events = new JwtBearerEvents
+        //{
+        //    OnMessageReceived = context =>
+        //    {
+        //        var accessToken = context.Request.Query["access_token"];
+        //        var path = context.HttpContext.Request.Path;
+
+        //        // Solo aplica para conexiones al Hub
+        //        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/NotifyHub"))
+        //        {
+        //            context.Token = accessToken;
+        //        }
+
+        //        return Task.CompletedTask;
+        //    }
+        //};
     });
+
 builder.Services.AddScoped<IFileStorage, FileStorage>();
 builder.Services.AddSignalR();
+builder.Services.AddAuthorizationCore();
 
 var app = builder.Build();
 
