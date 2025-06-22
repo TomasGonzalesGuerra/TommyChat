@@ -11,10 +11,10 @@
 
 <div class="d-flex justify-center align-center gap-5">
     <MudItem xs="6">
-        <MudSelect T="string" Label="Miembros del Sistema" @bind-Value="UserIdReceiver" SelectedValuesChanged="SelectedValuesChanged" Required="true" RequiredError="An Assigned Group is required." Style="width: 30rem;">
+        <MudSelect T="string" Label="Miembros del Sistema" @bind-Value="UserIdReceiver" Required="true" RequiredError="An Assigned Group is required." Style="width: 30rem;">
             @foreach (var item in UsersConnecteds)
             {
-                <MudSelectItem Value="@item.UserId">
+                <MudSelectItem Value="@item.UserName">
                     <MudAvatar Color="Color.Tertiary"> @item.UserName![0] </MudAvatar> - @item.UserName
                 </MudSelectItem>
             }
@@ -26,7 +26,7 @@
             <MudList T="string">
                 @foreach (var item in UsersConnecteds)
                 {
-                    <MudListItem>
+                    <MudListItem @onclick="SelectedReceiver">
                         <AvatarContent>
                             <MudAvatar Color="Color.Tertiary"> @item.UserName![0] </MudAvatar>
                         </AvatarContent>
@@ -51,7 +51,7 @@
 
     <MudButton Variant="Variant.Outlined" Color="Color.Success"> Enviar </MudButton>
 </MudPaper>
-<MudTHeadRow />
+
 <MudPaper Class="pa-5 ma-5">
     @* <MudButton OnClick="Connect" Variant="Variant.Outlined" Color="Color.Success"> Connect </MudButton>
     <MudButton OnClick="Disconnect" Variant="Variant.Outlined" Color="Color.Error"> Disconnect </MudButton> *@
@@ -68,15 +68,39 @@
         }
     </div>
 </MudPaper>
-<MudTHeadRow />
+
+<MudPaper Class="pa-4" Style="position: absolute; bottom: 0; right: 0; width:20rem;">
+    <MudStack Spacing="2">
+        <MudButton OnClick="OnExpandCollapseClick">
+            <MudList T="string">
+                <MudListItem>
+                    <AvatarContent>
+                        <MudAvatar Color="Color.Tertiary"> tommy </MudAvatar>
+                    </AvatarContent>
+
+                    <ChildContent>
+                        @* @UserReceiver.UserName - @UserReceiver.Id *@
+                    </ChildContent>
+                </MudListItem>
+            </MudList>
+        </MudButton>
+        <MudDivider />
+        <MudCollapse Expanded="_expanded" Style="@_expandedClas">
+            
+        </MudCollapse>
+    </MudStack>
+</MudPaper>
 
 
 @code {
-    HubConnection? _hubConnection;
     private User UserMe = new();
+    private User UserReceiver = new();
     private string? messageInput;
-    private List<string> Messages = [];
+    private string? _expandedClas;
+    HubConnection? _hubConnection;
+    private bool _expanded = true;
     private List<string> MyChats = [];
+    private List<string> Messages = [];
     private List<UsersConnectedDTO> UsersConnecteds = [];
     private string UserIdReceiver { get; set; } = string.Empty;
 
@@ -119,17 +143,38 @@
         UserMe = responseHTTP.Response!;
     }
 
-    private async Task SelectedValuesChanged()
+    // private async Task SelectedValuesChanged()
+    // {
+
+    // }
+
+    private async Task LoadUserReceiver()
     {
+        var responseHTTP = await _repository.GetAsync<User>($"/api/Accounts/{UserIdReceiver}");
+
         try
         {
-            Console.WriteLine($"UserMe: {UserMe.FullName} => {UserMe.Id}");
-            Console.WriteLine($"UserIdReceiver: {UserIdReceiver}");
+            if (responseHTTP.Error)
+            {
+                if (responseHTTP.HttpResponseMessage.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    _navigationManager.NavigateTo("/");
+                    return;
+                }
+
+                var messageError = await responseHTTP.GetErrorMessageAsync();
+                await _sweetAlertService.FireAsync("Error", messageError, SweetAlertIcon.Error);
+                return;
+            }
+
+            UserReceiver = responseHTTP.Response!;
         }
         catch (Exception ex)
         {
             await _sweetAlertService.FireAsync("Error", ex.Message, SweetAlertIcon.Error);
         }
+
+        Console.WriteLine($"Sending message to {UserReceiver.FullName} ({UserReceiver.Id})");
     }
 
     private void ReciveSystemMessage(string message)
@@ -150,6 +195,16 @@
         }
     }
 
+    private async Task SelectedReceiver()
+    {
+        await LoadUserReceiver();
+    }
+
+    private void OnExpandCollapseClick()
+    {
+        _expanded = !_expanded;
+        _expandedClas = _expanded ? "height: 10rem;" : string.Empty;
+    }
 
     public async ValueTask DisposeAsync()
     {

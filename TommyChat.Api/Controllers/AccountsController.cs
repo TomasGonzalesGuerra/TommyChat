@@ -100,12 +100,12 @@ namespace TommyChat.API.Controllers
             return Ok(user);
         }
 
-        [HttpGet("UsersNames")]
+        [HttpGet("{UserEmail}")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<IActionResult> GetAllUsers()
+        public async Task<IActionResult> GetUser(string UserEmail)
         {
-            var users = await _userManager.Users.Select(u => new { u.Id, u.UserName }).ToListAsync();
-            return Ok(users);
+            var user = await _userHelper.GetUserAsync(UserEmail);
+            return Ok(user);
         }
 
         [HttpPut]
