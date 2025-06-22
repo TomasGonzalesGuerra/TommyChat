@@ -62,7 +62,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         //    }
         //};
     });
-
 builder.Services.AddScoped<IFileStorage, FileStorage>();
 builder.Services.AddSignalR();
 builder.Services.AddAuthorizationCore();
@@ -89,8 +88,8 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-    //.WithOrigins("https://localhost:7177")
 app.UseCors(x => x
+    .WithOrigins("https://localhost:7177")
     .AllowAnyHeader()
     .AllowAnyMethod()
     .SetIsOriginAllowed(origin => true)

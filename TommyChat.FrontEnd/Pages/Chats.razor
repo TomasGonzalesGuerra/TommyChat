@@ -9,22 +9,37 @@
 
 <PageTitle>Chats</PageTitle>
 
-<MudPaper Class="pa-5 ma-5">
-    <MudItem xs="12">
-        <MudGrid Class="pa-4">
-            <MudItem xs="12">
-                <MudSelect T="string" Label="Miembros del Sistema" @bind-Value="UserIdReceiver" SelectedValuesChanged="SelectedValuesChanged" Required="true" RequiredError="An Assigned Group is required." Style="width: 30rem;">
-                    @foreach (var item in AllOnLineUsers)
-                    {
-                        <MudSelectItem Value="@item.Id">
-                            <MudAvatar Color="Color.Tertiary"> @item.UserName![0] </MudAvatar> - @item.UserName
-                        </MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-        </MudGrid>
+<div class="d-flex justify-center align-center gap-5">
+    <MudItem xs="6">
+        <MudSelect T="string" Label="Miembros del Sistema" @bind-Value="UserIdReceiver" SelectedValuesChanged="SelectedValuesChanged" Required="true" RequiredError="An Assigned Group is required." Style="width: 30rem;">
+            @foreach (var item in UsersConnecteds)
+            {
+                <MudSelectItem Value="@item.UserId">
+                    <MudAvatar Color="Color.Tertiary"> @item.UserName![0] </MudAvatar> - @item.UserName
+                </MudSelectItem>
+            }
+        </MudSelect>
     </MudItem>
-</MudPaper>
+
+    <MudItem xs="6" Class="d-flex justify-center">
+        <MudPaper Width="300px">
+            <MudList T="string">
+                @foreach (var item in UsersConnecteds)
+                {
+                    <MudListItem>
+                        <AvatarContent>
+                            <MudAvatar Color="Color.Tertiary"> @item.UserName![0] </MudAvatar>
+                        </AvatarContent>
+
+                        <ChildContent>
+                            @item.UserName - @item.UserId
+                        </ChildContent>
+                    </MudListItem>
+                }
+            </MudList>
+        </MudPaper>
+    </MudItem>
+</div>
 
 <MudPaper Class="pa-5 ma-5">
     <div class="form-group">
@@ -34,12 +49,12 @@
         </label>
     </div>
 
-    <MudButton OnClick="SendMessage" Disabled = "@(!IsConnected)" Variant="Variant.Outlined" Color="Color.Success"> Enviar </MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Success"> Enviar </MudButton>
 </MudPaper>
 <MudTHeadRow />
 <MudPaper Class="pa-5 ma-5">
-    <MudButton OnClick="Connect" Variant="Variant.Outlined" Color="Color.Success"> Connect </MudButton>
-    <MudButton OnClick="Disconnect" Variant="Variant.Outlined" Color="Color.Error"> Disconnect </MudButton>
+    @* <MudButton OnClick="Connect" Variant="Variant.Outlined" Color="Color.Success"> Connect </MudButton>
+    <MudButton OnClick="Disconnect" Variant="Variant.Outlined" Color="Color.Error"> Disconnect </MudButton> *@
 
     <div style="width:30rem;">
         @if (Messages != null)
@@ -52,53 +67,36 @@
             </ul>
         }
     </div>
-
-    <div>
-        @if (MyChats != null)
-        {
-            <ul>
-                @foreach (var message in MyChats)
-                {
-                    <li>@message</li>
-                }
-            </ul>
-        }
-    </div>
-
-    <MudText> @_notifyService.ConnectionState.ToString() </MudText>
 </MudPaper>
 <MudTHeadRow />
 
 
 @code {
+    HubConnection? _hubConnection;
     private User UserMe = new();
     private string? messageInput;
     private List<string> Messages = [];
     private List<string> MyChats = [];
-    private List<UserDT> AllOnLineUsers = [];
+    private List<UsersConnectedDTO> UsersConnecteds = [];
     private string UserIdReceiver { get; set; } = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
-        _notifyService.ConnectionStateChanged += StateHasChanged;
-        _notifyService._hubConnection.On<string>("AllClientsNotify", (statement) =>
-        {
-            Messages.Add(statement);
-            InvokeAsync(() => StateHasChanged());
-            Console.WriteLine($"Mensaje de Entrada");
-        });
-        _notifyService._hubConnection.On<string, string>("SendPrivateMessage", (senderUserId, message) =>
-        {
-            MyChats.Add(message);
-            InvokeAsync(() => StateHasChanged());
-            Console.WriteLine($"Mensaje de {senderUserId}: {message}");
-        });
-
-
-
-        await Connect();
         await LoadUserAsyc();
-        await GetAllOnLineUserAsyc();
+        await ConnectToSignalR();
+    }
+
+    public async Task ConnectToSignalR()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl($"https://localhost:7067/NotifyHub?userSellerId={UserMe.Id}&userSellerName={UserMe.FullName}")
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<string>("ReciveSystemMessage", ReciveSystemMessage);
+        _hubConnection.On<List<UsersConnectedDTO>>("UpdateUserList", UpdateUserList);
+
+        await _hubConnection.StartAsync();
     }
 
     private async Task LoadUserAsyc()
@@ -121,19 +119,6 @@
         UserMe = responseHTTP.Response!;
     }
 
-    private async Task GetAllOnLineUserAsyc()
-    {
-        try
-        {
-            var responseHppt = await _repository.GetAsync<List<UserDT>>("/api/Accounts/UsersNames");
-            AllOnLineUsers = responseHppt.Response!;
-        }
-        catch (Exception ex)
-        {
-            await _sweetAlertService.FireAsync("Error", ex.Message, SweetAlertIcon.Error);
-        }
-    }
-
     private async Task SelectedValuesChanged()
     {
         try
@@ -147,33 +132,30 @@
         }
     }
 
-    public async Task Connect() => await _notifyService.StartConnectionAsync();
-    public async Task Disconnect() => await _notifyService.CloseConnectionAsync();
-    public bool IsConnected => _notifyService._hubConnection.State == HubConnectionState.Connected;
-
-    public async Task SendMessage()
+    private void ReciveSystemMessage(string message)
     {
-        await Connect();
-        Console.WriteLine($"UserMe: {UserMe.FullName} => {UserMe.Id}");
-        Console.WriteLine($"UserIdReceiver: {UserIdReceiver}");
-        Console.WriteLine($"messageInput: {messageInput}");
-        await _notifyService.SendPrivateMessageAsync(UserMe.Id, UserIdReceiver, messageInput!);
+        if (!string.IsNullOrEmpty(message))
+        {
+            Messages.Add(message);
+            InvokeAsync(() => StateHasChanged());
+        }
     }
 
-
-
-    public async ValueTask DisposeAsync()
+    private void UpdateUserList(List<UsersConnectedDTO> usersConnecteds)
     {
-        if (_notifyService._hubConnection is not null)
+        if (usersConnecteds != null && usersConnecteds.Count > 0)
         {
-            await _notifyService._hubConnection.DisposeAsync();
+            UsersConnecteds = usersConnecteds;
+            InvokeAsync(() => StateHasChanged());
         }
     }
 
 
-    public class UserDT
+    public async ValueTask DisposeAsync()
     {
-        public string Id { get; set; }
-        public string UserName { get; set; }
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
     }
 }

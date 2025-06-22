@@ -75,3 +75,15 @@
 code {
     color: #c02d76;
 }
+
+th.mud-table-cell, td.mud-table-cell {
+    text-align: center;
+}
+
+.my-custom-class {
+    backdrop-filter: blur(7px);
+}
+
+.mud-select .mud-select-input .mud-input-slot {
+    height: auto;
+}
