@@ -14,7 +14,7 @@
         <MudSelect T="string" Label="Miembros del Sistema" @bind-Value="UserIdReceiver" Required="true" RequiredError="An Assigned Group is required." Style="width: 30rem;">
             @foreach (var item in UsersConnecteds)
             {
-                <MudSelectItem Value="@item.UserName">
+                <MudSelectItem Value="@item.UserId">
                     <MudAvatar Color="Color.Tertiary"> @item.UserName![0] </MudAvatar> - @item.UserName
                 </MudSelectItem>
             }
@@ -69,28 +69,22 @@
     </div>
 </MudPaper>
 
-<MudPaper Class="pa-4" Style="position: absolute; bottom: 0; right: 0; width:20rem;">
-    <MudStack Spacing="2">
-        <MudButton OnClick="OnExpandCollapseClick">
-            <MudList T="string">
-                <MudListItem>
-                    <AvatarContent>
-                        <MudAvatar Color="Color.Tertiary"> tommy </MudAvatar>
-                    </AvatarContent>
+@if (!string.IsNullOrEmpty(UserReceiver.UserName))
+{    
+    <MudPaper Class="pa-2" Style="position: absolute; bottom: 0; right: 0; width:20rem;">
+        <MudStack Spacing="2">
+            <MudButton OnClick="OnExpandCollapseClick">
+                <MudAvatar Color="Color.Tertiary" Class="mr-3"> @UserReceiver.UserName![0] </MudAvatar>
+                @UserReceiver.UserName
+            </MudButton>
+            <MudDivider />
 
-                    <ChildContent>
-                        @* @UserReceiver.UserName - @UserReceiver.Id *@
-                    </ChildContent>
-                </MudListItem>
-            </MudList>
-        </MudButton>
-        <MudDivider />
-        <MudCollapse Expanded="_expanded" Style="@_expandedClas">
-            
-        </MudCollapse>
-    </MudStack>
-</MudPaper>
-
+            <MudCollapse Expanded="_expanded" Style="@_expandedClas">
+                Este @UserReceiver.UserName es un usuario conectado al sistema, puedes enviarle mensajes.
+            </MudCollapse>
+        </MudStack>
+    </MudPaper>
+}
 
 @code {
     private User UserMe = new();
@@ -98,7 +92,7 @@
     private string? messageInput;
     private string? _expandedClas;
     HubConnection? _hubConnection;
-    private bool _expanded = true;
+    private bool _expanded;
     private List<string> MyChats = [];
     private List<string> Messages = [];
     private List<UsersConnectedDTO> UsersConnecteds = [];
@@ -125,7 +119,7 @@
 
     private async Task LoadUserAsyc()
     {
-        var responseHTTP = await _repository.GetAsync<User>($"/api/Accounts/Profile");
+        var responseHTTP = await _repository.GetAsync<User>("/api/Accounts/Profile");
 
         if (responseHTTP.Error)
         {
@@ -143,14 +137,9 @@
         UserMe = responseHTTP.Response!;
     }
 
-    // private async Task SelectedValuesChanged()
-    // {
-
-    // }
-
     private async Task LoadUserReceiver()
     {
-        var responseHTTP = await _repository.GetAsync<User>($"/api/Accounts/{UserIdReceiver}");
+        var responseHTTP = await _repository.GetAsync<User>($"/api/Accounts/UserIdReceiver?UserIdReceiver={UserIdReceiver}");
 
         try
         {
@@ -173,8 +162,6 @@
         {
             await _sweetAlertService.FireAsync("Error", ex.Message, SweetAlertIcon.Error);
         }
-
-        Console.WriteLine($"Sending message to {UserReceiver.FullName} ({UserReceiver.Id})");
     }
 
     private void ReciveSystemMessage(string message)
@@ -198,6 +185,7 @@
     private async Task SelectedReceiver()
     {
         await LoadUserReceiver();
+        OnExpandCollapseClick();
     }
 
     private void OnExpandCollapseClick()

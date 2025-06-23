@@ -100,11 +100,13 @@ namespace TommyChat.API.Controllers
             return Ok(user);
         }
 
-        [HttpGet("{UserEmail}")]
-        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<IActionResult> GetUser(string UserEmail)
+        // GET: api/Accounts/UserIdReceiver?UserIdReceiver={UserIdReceiver}
+        [HttpGet("UserIdReceiver")]
+        public async Task<ActionResult<User>> GetUserAsync([FromQuery] string UserIdReceiver)
         {
-            var user = await _userHelper.GetUserAsync(UserEmail);
+            if (_dataContext.Users == null) return BadRequest("Entidad Users NO Enconttrada");
+            User user = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == UserIdReceiver);
+            if (user == null) return BadRequest(NotFound($"Usuario con email '{UserIdReceiver}' no encontrado"));
             return Ok(user);
         }
 
