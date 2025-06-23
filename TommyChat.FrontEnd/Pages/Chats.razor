@@ -11,14 +11,20 @@
 
 <div class="d-flex justify-center align-center gap-5">
     <MudItem xs="6">
-        <MudSelect T="string" Label="Miembros del Sistema" @bind-Value="UserIdReceiver" Required="true" RequiredError="An Assigned Group is required." Style="width: 30rem;">
-            @foreach (var item in UsersConnecteds)
+        <MudButton OnClick="Connect" Variant="Variant.Outlined" Color="Color.Success"> Connect </MudButton>
+        <MudButton OnClick="Disconnect" Variant="Variant.Outlined" Color="Color.Error"> Disconnect </MudButton>
+
+        <div style="width:30rem;">
+            @if (Messages != null)
             {
-                <MudSelectItem Value="@item.UserId">
-                    <MudAvatar Color="Color.Tertiary"> @item.UserName![0] </MudAvatar> - @item.UserName
-                </MudSelectItem>
+                <ul>
+                    @foreach (var message in Messages)
+                    {
+                        <li>@message</li>
+                    }
+                </ul>
             }
-        </MudSelect>
+        </div>
     </MudItem>
 
     <MudItem xs="6" Class="d-flex justify-center">
@@ -26,13 +32,13 @@
             <MudList T="string">
                 @foreach (var item in UsersConnecteds)
                 {
-                    <MudListItem @onclick="SelectedReceiver">
+                    <MudListItem @onclick="@(() => SelectedReceiver(item.UserId!))">
                         <AvatarContent>
                             <MudAvatar Color="Color.Tertiary"> @item.UserName![0] </MudAvatar>
                         </AvatarContent>
 
                         <ChildContent>
-                            @item.UserName - @item.UserId
+                            @item.UserName
                         </ChildContent>
                     </MudListItem>
                 }
@@ -41,37 +47,9 @@
     </MudItem>
 </div>
 
-<MudPaper Class="pa-5 ma-5">
-    <div class="form-group">
-        <label>
-            Message:
-            <input @bind="messageInput" size="50" />
-        </label>
-    </div>
-
-    <MudButton Variant="Variant.Outlined" Color="Color.Success"> Enviar </MudButton>
-</MudPaper>
-
-<MudPaper Class="pa-5 ma-5">
-    @* <MudButton OnClick="Connect" Variant="Variant.Outlined" Color="Color.Success"> Connect </MudButton>
-    <MudButton OnClick="Disconnect" Variant="Variant.Outlined" Color="Color.Error"> Disconnect </MudButton> *@
-
-    <div style="width:30rem;">
-        @if (Messages != null)
-        {
-            <ul>
-                @foreach (var message in Messages)
-                {
-                    <li>@message</li>
-                }
-            </ul>
-        }
-    </div>
-</MudPaper>
-
 @if (!string.IsNullOrEmpty(UserReceiver.UserName))
 {    
-    <MudPaper Class="pa-2" Style="position: absolute; bottom: 0; right: 0; width:20rem;">
+    <MudPaper Class="pa-2" Style="position: absolute; bottom: 0; right: 2%; width:20rem;">
         <MudStack Spacing="2">
             <MudButton OnClick="OnExpandCollapseClick">
                 <MudAvatar Color="Color.Tertiary" Class="mr-3"> @UserReceiver.UserName![0] </MudAvatar>
@@ -80,23 +58,51 @@
             <MudDivider />
 
             <MudCollapse Expanded="_expanded" Style="@_expandedClas">
-                Este @UserReceiver.UserName es un usuario conectado al sistema, puedes enviarle mensajes.
+                <MudChat ChatPosition="ChatBubblePosition.End">
+                    @if (MenssageSent.Count > 0)
+                    {                    
+                        @foreach (var item in MenssageSent)
+                        {                    
+                            <MudAvatar> Me </MudAvatar>
+                            <MudChatBubble>
+                                @item
+                            </MudChatBubble>
+                        }
+                    }
+                </MudChat>
+
+                <MudChat ChatPosition="ChatBubblePosition.Start">
+                    <MudAvatar> R </MudAvatar>
+                    <MudChatBubble>
+                        Hoaaa...
+                    </MudChatBubble>
+                </MudChat>
             </MudCollapse>
+
+            @if (!string.IsNullOrWhiteSpace(_expandedClas))
+            {            
+                <MudItem Class="d-flex justify-space-between align-center">
+                    <MudTextField @bind-Value="MessageInput" Label="Mensajea" Variant="Variant.Outlined"></MudTextField>
+                    <MudIconButton OnClick="@(() => SendMessage(MessageInput))" Icon="@Icons.Material.Outlined.Send" Color="Color.Inherit" Edge="Edge.End" Style="margin-right: 0px; margin-inline-end: 0px; margin-inline-start: initial;" />
+                </MudItem>
+            }
         </MudStack>
     </MudPaper>
 }
 
+
+
 @code {
     private User UserMe = new();
     private User UserReceiver = new();
-    private string? messageInput;
     private string? _expandedClas;
     HubConnection? _hubConnection;
     private bool _expanded;
     private List<string> MyChats = [];
     private List<string> Messages = [];
     private List<UsersConnectedDTO> UsersConnecteds = [];
-    private string UserIdReceiver { get; set; } = string.Empty;
+    private string MessageInput { get; set; } = string.Empty;
+    private List<string> MenssageSent = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -104,7 +110,7 @@
         await ConnectToSignalR();
     }
 
-    public async Task ConnectToSignalR()
+    private async Task ConnectToSignalR()
     {
         _hubConnection = new HubConnectionBuilder()
             .WithUrl($"https://localhost:7067/NotifyHub?userSellerId={UserMe.Id}&userSellerName={UserMe.FullName}")
@@ -116,6 +122,9 @@
 
         await _hubConnection.StartAsync();
     }
+
+    private void Connect() => _hubConnection?.StartAsync();
+    private void Disconnect() => _hubConnection?.DisposeAsync();
 
     private async Task LoadUserAsyc()
     {
@@ -137,7 +146,7 @@
         UserMe = responseHTTP.Response!;
     }
 
-    private async Task LoadUserReceiver()
+    private async Task LoadUserReceiver(string UserIdReceiver)
     {
         var responseHTTP = await _repository.GetAsync<User>($"/api/Accounts/UserIdReceiver?UserIdReceiver={UserIdReceiver}");
 
@@ -182,19 +191,25 @@
         }
     }
 
-    private async Task SelectedReceiver()
+    private async Task SelectedReceiver(string UserIdReceiver)
     {
-        await LoadUserReceiver();
+        await LoadUserReceiver(UserIdReceiver);
         OnExpandCollapseClick();
     }
 
     private void OnExpandCollapseClick()
     {
         _expanded = !_expanded;
-        _expandedClas = _expanded ? "height: 10rem;" : string.Empty;
+        _expandedClas = _expanded ? "height: 15rem;" : string.Empty;
     }
 
-    public async ValueTask DisposeAsync()
+    private void SendMessage(string messageInput)
+    {
+        MenssageSent.Add(messageInput);
+        MessageInput = string.Empty;
+    }
+
+    private async ValueTask DisposeAsync()
     {
         if (_hubConnection is not null)
         {
