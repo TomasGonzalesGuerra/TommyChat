@@ -30,6 +30,18 @@
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="_content/CurrieTechnologies.Razor.SweetAlert2/sweetAlert2.min.js"></script>
+    <script>
+        window.chatInputHandler = {
+            initialize: function (element, dotNetHelper) {
+                element.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        dotNetHelper.invokeMethodAsync("EnviarMensajeDesdeJS");
+                    }
+                });
+            }
+        };
+    </script>
 </body>
 
 </html>

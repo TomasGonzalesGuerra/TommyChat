@@ -1,37 +1,9 @@
 ﻿@page "/ChatPrivado"
 @inject HubConnection hubConnection
 @inject Blazored.LocalStorage.ILocalStorageService localStorage
+@inject IJSRuntime JS
 
 <h3>💬 Chat Privado</h3>
-
-<div class="mud-grid">
-    <div class="mud-item mud-width-4">
-        <h4>🟢 Usuarios conectados</h4>
-        <ul>
-            @foreach (var usuario in usuariosConectados)
-            {
-                <li @onclick="() => destinatario = usuario" style="cursor:pointer">
-                    @usuario
-                </li>
-            }
-        </ul>
-    </div>
-
-    <div class="mud-item mud-width-8">
-        <label>Enviar a:</label>
-        <input @bind="destinatario" placeholder="usuario@email.com" />
-
-        <label>Mensaje:</label>
-        <textarea @bind="mensaje" rows="3" style="width:100%"></textarea>
-
-        <button class="mud-button mud-button-filled" @onclick="EnviarMensaje">Enviar</button>
-
-        @if (!string.IsNullOrWhiteSpace(mensajeRecibido))
-        {
-            <p><strong>@remitenteRecibido:</strong> @mensajeRecibido</p>
-        }
-    </div>
-</div>
 
 <div class="mud-grid">
     <div class="mud-item mud-width-4">
@@ -51,57 +23,88 @@
     <div class="mud-item mud-width-8">
         @if (!string.IsNullOrWhiteSpace(destinatario))
         {
-            <p><strong>Enviando mensaje a:</strong> @destinatario</p>
+            <p><strong>Conversación con:</strong> @destinatario</p>
         }
 
-        <textarea @bind="mensaje" rows="3" style="width:100%" placeholder="Escribe tu mensaje..."></textarea>
+        <div style="border:1px solid #ccc; padding:10px; height:200px; overflow-y:auto; margin-bottom:10px;">
+            @foreach (var mensaje in mensajes)
+            {
+                <p><strong>@mensaje.Remitente:</strong> @mensaje.Contenido</p>
+            }
+        </div>
+
+        <textarea @bind="mensaje"
+                  @ref="textareaRef"
+                  rows="3"
+                  style="width:100%"
+                  placeholder="Escribe tu mensaje..."></textarea>
 
         <button class="mud-button mud-button-filled" @onclick="EnviarMensaje" disabled="@string.IsNullOrWhiteSpace(destinatario)">
             Enviar
         </button>
-
-        @if (!string.IsNullOrWhiteSpace(mensajeRecibido))
-        {
-            <p><strong>@remitenteRecibido:</strong> @mensajeRecibido</p>
-        }
     </div>
 </div>
 
-
-
 @code {
+    private ElementReference textareaRef;
+    private DotNetObjectReference<ChatPrivado>? dotNetRef;
     private string? destinatario;
     private string? mensaje;
-    private string? mensajeRecibido;
-    private string? remitenteRecibido;
-    private List<string> usuariosConectados = [];
     private string? miEmail;
+    private List<string> usuariosConectados = [];
+
+    private List<MensajeDTO> mensajes = [];
+
+    private class MensajeDTO
+    {
+        public string Remitente { get; set; } = "";
+        public string Contenido { get; set; } = "";
+    }
 
     protected override async Task OnInitializedAsync()
     {
         await ObtenerMiEmail();
+
+        hubConnection.On<string, string>("RecibirMensajePrivado", (remitente, contenido) =>
+        {
+            mensajes.Add(new MensajeDTO { Remitente = remitente, Contenido = contenido });
+            StateHasChanged();
+        });
+
+        hubConnection.On<List<string>>("UsuariosConectados", (usuarios) =>
+        {
+            if (!string.IsNullOrWhiteSpace(miEmail))
+            {
+                usuariosConectados = usuarios.Where(u => u != miEmail).ToList();
+            }
+            else
+            {
+                usuariosConectados = usuarios;
+            }
+
+            StateHasChanged();
+        });
 
         if (hubConnection.State == HubConnectionState.Disconnected)
         {
             await hubConnection.StartAsync();
             Console.WriteLine("Conexión SignalR iniciada.");
         }
+    }
 
-        hubConnection.On<string, string>("RecibirMensajePrivado", (remitente, mensaje) =>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            remitenteRecibido = remitente;
-            mensajeRecibido = mensaje;
-            StateHasChanged();
-        });
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("chatInputHandler.initialize", textareaRef, dotNetRef);
+        }
+    }
 
-        hubConnection.On<List<string>>("UsuariosConectados", (usuarios) =>
-        {
-            usuariosConectados = usuarios
-                .Where(u => u != miEmail) // 👈 Excluirme a mí mismo
-                .ToList();
-
-            StateHasChanged();
-        });
+    [JSInvokable("EnviarMensajeDesdeJS")]
+    public async Task EnviarMensajeDesdeJS()
+    {
+        await EnviarMensaje();
     }
 
     private async Task ObtenerMiEmail()
@@ -111,13 +114,15 @@
 
         var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(token);
+
         miEmail = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
+        Console.WriteLine($"Mi email detectado: {miEmail}");
     }
 
     private void SeleccionarDestinatario(string usuario)
     {
         destinatario = usuario;
-        mensajeRecibido = null;
+        mensajes.Clear(); // Opcional: limpiar historial al cambiar de usuario
     }
 
     private async Task EnviarMensaje()
@@ -125,7 +130,17 @@
         if (!string.IsNullOrWhiteSpace(destinatario) && !string.IsNullOrWhiteSpace(mensaje))
         {
             await hubConnection.InvokeAsync("EnviarMensajePrivado", destinatario, mensaje);
+            mensajes.Add(new MensajeDTO { Remitente = "Yo", Contenido = mensaje });
             mensaje = string.Empty;
         }
     }
+
+    private async Task DetectarEnter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await EnviarMensaje();
+        }
+    }
 }
+
