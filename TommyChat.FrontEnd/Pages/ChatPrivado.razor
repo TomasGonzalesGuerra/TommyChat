@@ -1,0 +1,131 @@
+﻿@page "/ChatPrivado"
+@inject HubConnection hubConnection
+@inject Blazored.LocalStorage.ILocalStorageService localStorage
+
+<h3>💬 Chat Privado</h3>
+
+<div class="mud-grid">
+    <div class="mud-item mud-width-4">
+        <h4>🟢 Usuarios conectados</h4>
+        <ul>
+            @foreach (var usuario in usuariosConectados)
+            {
+                <li @onclick="() => destinatario = usuario" style="cursor:pointer">
+                    @usuario
+                </li>
+            }
+        </ul>
+    </div>
+
+    <div class="mud-item mud-width-8">
+        <label>Enviar a:</label>
+        <input @bind="destinatario" placeholder="usuario@email.com" />
+
+        <label>Mensaje:</label>
+        <textarea @bind="mensaje" rows="3" style="width:100%"></textarea>
+
+        <button class="mud-button mud-button-filled" @onclick="EnviarMensaje">Enviar</button>
+
+        @if (!string.IsNullOrWhiteSpace(mensajeRecibido))
+        {
+            <p><strong>@remitenteRecibido:</strong> @mensajeRecibido</p>
+        }
+    </div>
+</div>
+
+<div class="mud-grid">
+    <div class="mud-item mud-width-4">
+        <h4>🟢 Usuarios conectados</h4>
+        <ul style="list-style:none; padding-left:0;">
+            @foreach (var usuario in usuariosConectados)
+            {
+                <li>
+                    <button class="mud-button mud-button-text" @onclick="() => SeleccionarDestinatario(usuario)">
+                        @usuario
+                    </button>
+                </li>
+            }
+        </ul>
+    </div>
+
+    <div class="mud-item mud-width-8">
+        @if (!string.IsNullOrWhiteSpace(destinatario))
+        {
+            <p><strong>Enviando mensaje a:</strong> @destinatario</p>
+        }
+
+        <textarea @bind="mensaje" rows="3" style="width:100%" placeholder="Escribe tu mensaje..."></textarea>
+
+        <button class="mud-button mud-button-filled" @onclick="EnviarMensaje" disabled="@string.IsNullOrWhiteSpace(destinatario)">
+            Enviar
+        </button>
+
+        @if (!string.IsNullOrWhiteSpace(mensajeRecibido))
+        {
+            <p><strong>@remitenteRecibido:</strong> @mensajeRecibido</p>
+        }
+    </div>
+</div>
+
+
+
+@code {
+    private string? destinatario;
+    private string? mensaje;
+    private string? mensajeRecibido;
+    private string? remitenteRecibido;
+    private List<string> usuariosConectados = [];
+    private string? miEmail;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ObtenerMiEmail();
+
+        if (hubConnection.State == HubConnectionState.Disconnected)
+        {
+            await hubConnection.StartAsync();
+            Console.WriteLine("Conexión SignalR iniciada.");
+        }
+
+        hubConnection.On<string, string>("RecibirMensajePrivado", (remitente, mensaje) =>
+        {
+            remitenteRecibido = remitente;
+            mensajeRecibido = mensaje;
+            StateHasChanged();
+        });
+
+        hubConnection.On<List<string>>("UsuariosConectados", (usuarios) =>
+        {
+            usuariosConectados = usuarios
+                .Where(u => u != miEmail) // 👈 Excluirme a mí mismo
+                .ToList();
+
+            StateHasChanged();
+        });
+    }
+
+    private async Task ObtenerMiEmail()
+    {
+        var token = await localStorage.GetItemAsync<string>("jwt_token");
+        if (string.IsNullOrWhiteSpace(token)) return;
+
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        miEmail = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
+    }
+
+    private void SeleccionarDestinatario(string usuario)
+    {
+        destinatario = usuario;
+        mensajeRecibido = null;
+    }
+
+    private async Task EnviarMensaje()
+    {
+        if (!string.IsNullOrWhiteSpace(destinatario) && !string.IsNullOrWhiteSpace(mensaje))
+        {
+            await hubConnection.InvokeAsync("EnviarMensajePrivado", destinatario, mensaje);
+            mensaje = string.Empty;
+        }
+    }
+}

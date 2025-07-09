@@ -7,80 +7,66 @@ using TommyChat.Shared.DTOs;
 namespace TommyChat.Api.Hubs;
 
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-public class NotifyHub : Hub<IUsersConnected>
+public class NotifyHub : Hub
 {
-    private static readonly List<UsersConnectedDTO> _usersConnecteds = [];
-    private static readonly object _lock = new();
-
+    private static readonly Dictionary<string, List<string>> _userConnections = new();
 
     public override async Task OnConnectedAsync()
     {
-        var isAuthenticated = Context.User?.Identity?.IsAuthenticated ?? false;
-        var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var userName = Context.User?.Identity?.Name;
-        var email = Context.User?.FindFirst(ClaimTypes.Name)?.Value ?? "Anónimo";
-        Console.WriteLine($"Email del usuario: {email}");
-        Console.WriteLine($"¿Autenticado?: {isAuthenticated}");
-
-        lock (_lock)
+        var email = Context.User?.FindFirst(ClaimTypes.Name)?.Value;
+        if (email is not null)
         {
-            UsersConnectedDTO? userDisconnected = _usersConnecteds.FirstOrDefault(u => u.UserName == userName);
-            if (userDisconnected != null) _usersConnecteds.Remove(userDisconnected);
-
-            _usersConnecteds.Add(new()
+            lock (_userConnections)
             {
-                UserId = userId,
-                UserName = userName,
-                UserEmail = Context.GetHttpContext()?.User?.Identity?.Name,
-                UserPhoto = Context.GetHttpContext()?.User?.Claims.FirstOrDefault(c => c.Type == "Photo")?.Value,
-                ConnectionId = Context.ConnectionId
-            });
+                if (!_userConnections.ContainsKey(email))
+                    _userConnections[email] = new List<string>();
+
+                _userConnections[email].Add(Context.ConnectionId);
+            }
+
+            await NotificarUsuariosConectados();
         }
 
-        await TestPrivateMessage(userName, $"{Context.ConnectionId} - Te Conectaste - {userName} - {userId}");
-        await Clients.Caller.ReciveSystemMessage($"{Context.ConnectionId} - Te Conectaste - {userName} - {userId}");
-        await Clients.All.UpdateUserList(_usersConnecteds);
         await base.OnConnectedAsync();
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        UsersConnectedDTO? userDisconnected = new();
-
-        lock (_lock)
+        var email = Context.User?.FindFirst(ClaimTypes.Name)?.Value;
+        if (email is not null)
         {
-            userDisconnected = _usersConnecteds.FirstOrDefault(u => u.ConnectionId == Context.ConnectionId);
-            if (userDisconnected != null)
+            lock (_userConnections)
             {
-                _usersConnecteds.Remove(userDisconnected);
+                if (_userConnections.ContainsKey(email))
+                {
+                    _userConnections[email].Remove(Context.ConnectionId);
+                    if (_userConnections[email].Count == 0)
+                        _userConnections.Remove(email);
+                }
             }
-        }
 
-        if (userDisconnected != null)
-        {
-            await Clients.All.UpdateUserList(_usersConnecteds);
+            await NotificarUsuariosConectados();
         }
 
         await base.OnDisconnectedAsync(exception);
     }
 
-    public async Task SendPrivateMessage(string userReceiverId, string message)
+    private Task NotificarUsuariosConectados()
     {
-        var senderName = Context.User?.Identity?.Name ?? "Anónimo";
-
-        if (string.IsNullOrEmpty(userReceiverId) || string.IsNullOrEmpty(message)) return;
-
-        // TEMPORAL: mensaje al remitente para saber si llega aquí
-        await Clients.Caller.ReciveSystemMessage($"Intentando enviar a {userReceiverId}: {message}");
-        await Clients.All.SendPrivateMessage(senderName, message);
+        var usuarios = _userConnections.Keys.ToList();
+        return Clients.All.SendAsync("UsuariosConectados", usuarios);
     }
 
-
-    public async Task TestPrivateMessage(string userReceiverId, string message)
+    public async Task EnviarMensajePrivado(string destinatarioEmail, string mensaje)
     {
-        if (string.IsNullOrEmpty(userReceiverId) || string.IsNullOrEmpty(message)) return;
+        var remitente = Context.User?.FindFirst(ClaimTypes.Name)?.Value ?? "Anónimo";
 
-        // TEMPORAL: mensaje al remitente para saber si llega aquí
-        await Clients.Caller.ReciveTestMessage($"Esto es desde TestPrivateMessage - userReceiverId: {userReceiverId} -> {message}");
+        if (_userConnections.TryGetValue(destinatarioEmail, out var conexiones))
+        {
+            foreach (var connectionId in conexiones)
+            {
+                await Clients.Client(connectionId).SendAsync("RecibirMensajePrivado", remitente, mensaje);
+            }
+        }
     }
 }
