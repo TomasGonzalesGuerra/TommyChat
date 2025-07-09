@@ -36,46 +36,10 @@
     </MudItem>
 </MudGrid>
 
-@* @if (!string.IsNullOrEmpty(destinatario))
-{    
-    <MudPaper Class="pa-2" Style="position: absolute; bottom: 0; right: 2%; width:20rem;">
-        <MudStack Spacing="2">
-            <MudButton OnClick="OnExpandCollapseClick">
-                <MudAvatar Color="Color.Tertiary" Class="mr-3"> @destinatario![0] </MudAvatar>
-                @destinatario
-            </MudButton>
-            <MudDivider />
-
-            <MudCollapse Expanded="_expanded" Style="@_expandedClas">
-                <MudChat ChatPosition="ChatBubblePosition.Start">
-                    @if (mensajes.Count > 0)
-                    {
-                        @foreach (var item in mensajes)
-                        {
-                            <MudAvatar>@item.Remitente</MudAvatar>
-                            <MudChatBubble>
-                                @item.Contenido
-                            </MudChatBubble>
-                        }
-                    }
-                </MudChat>
-            </MudCollapse>
-
-            @if (!string.IsNullOrWhiteSpace(_expandedClas))
-            {            
-                <MudItem Class="d-flex justify-space-between align-center">
-                    <MudTextField @bind-Value="mensaje" Label="Mensajea" Variant="Variant.Outlined"></MudTextField>
-                    <MudIconButton OnClick="EnviarMensaje" Icon="@Icons.Material.Outlined.Send" Color="Color.Inherit" Edge="Edge.End" Style="margin-right: 0px; margin-inline-end: 0px; margin-inline-start: initial;" />
-                </MudItem>
-            }
-        </MudStack>
-    </MudPaper>
-} *@
 
 @foreach (var usuario in chatsAbiertos.Keys)
 {
     string estilo = $"position: absolute; bottom: 0; right: {20 * chatsAbiertos.Keys.ToList().IndexOf(usuario)}rem; width:20rem;";
-
     <MudPaper Class="pa-2" Style="@estilo">
         <MudStack Spacing="2">
             <!-- Encabezado siempre visible -->
@@ -84,24 +48,32 @@
                 @usuario
             </MudButton>
 
-            <MudCollapse Expanded="chatsAbiertos[usuario]" Style="height: 15rem; overflow-y:auto;">
-                <MudChat>
+            <MudCollapse Expanded="_expanded" Style="@_expandedClas">
                     @foreach (var item in conversaciones[usuario])
                     {
-                        <MudChatBubble ChatPosition="@(item.Remitente == miEmail ? ChatBubblePosition.End : ChatBubblePosition.Start)">
-                            <MudText Typo="Typo.caption" Align="@(item.Remitente == miEmail ? Align.Right : Align.Left)">
+                        <MudChat ChatPosition="@(item.Remitente == miEmail ? ChatBubblePosition.End : ChatBubblePosition.Start)">
+                            @if (item.Remitente == miEmail)
+                            {
+                                <MudAvatar> Yo </MudAvatar>                    
+                            }
+                            else
+                            {
+                                <MudAvatar> @usuario[0] </MudAvatar>
+                            }
+                            <MudChatBubble>
                                 @item.Contenido
-                            </MudText>
-                        </MudChatBubble>
+                            </MudChatBubble>
+                        </MudChat>
                     }
-                </MudChat>
-
+            </MudCollapse>
+            
+            @if (!string.IsNullOrWhiteSpace(_expandedClas))
+            {
                 <MudItem Class="d-flex justify-space-between align-center mt-2">
-                    <MudTextField @bind-Value="mensajeTemporal[usuario]" Label="Mensaje" Variant="Variant.Outlined"
-                                  OnKeyDown="@(e => DetectarEnter(e, usuario))" />
+                    <MudTextField @bind-Value="mensajeTemporal[usuario]" Label="Mensaje" Variant="Variant.Outlined" OnKeyDown="@(e => DetectarEnter(e, usuario))" />
                     <MudIconButton OnClick="@(() => EnviarMensaje(usuario))" Icon="@Icons.Material.Outlined.Send" />
                 </MudItem>
-            </MudCollapse>
+            }
         </MudStack>
     </MudPaper>
 }
@@ -195,6 +167,8 @@
         if (chatsAbiertos.ContainsKey(usuario))
         {
             chatsAbiertos[usuario] = !chatsAbiertos[usuario];
+            _expanded = !_expanded;
+            _expandedClas = _expanded ? "height: 15rem;" : string.Empty;
         }
     }
 
@@ -215,27 +189,6 @@
         {
             await EnviarMensaje(destinatario);
         }
-    }
-
-    // private void SeleccionarDestinatario(string usuario)
-    // {
-    //     destinatario = usuario;
-    // }
-
-    // private async Task EnviarMensaje()
-    // {
-    //     if (!string.IsNullOrWhiteSpace(destinatario) && !string.IsNullOrWhiteSpace(mensaje))
-    //     {
-    //         await hubConnection.InvokeAsync("EnviarMensajePrivado", destinatario, mensaje);
-    //         mensajes.Add(new MensajeDTO { Remitente = "Yo", Contenido = mensaje });
-    //         mensaje = string.Empty;
-    //     }
-    // }
-
-    private void OnExpandCollapseClick()
-    {
-        _expanded = !_expanded;
-        _expandedClas = _expanded ? "height: 15rem;" : string.Empty;
     }
 
     private async ValueTask DisposeAsync()
