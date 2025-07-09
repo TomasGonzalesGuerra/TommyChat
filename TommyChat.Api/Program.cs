@@ -1,14 +1,14 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
+using TommyChat.Api.Hubs;
 using TommyChat.API.Data;
 using TommyChat.API.Helpers;
 using TommyChat.Shared.Entities;
-using Microsoft.AspNetCore.ResponseCompression;
-using TommyChat.Api.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,10 +32,20 @@ builder.Services.AddIdentity<User, IdentityRole>(x =>
 })
 .AddEntityFrameworkStores<DataContext>().AddDefaultTokenProviders();
 builder.Services.AddScoped<IUserHelper, UserHelper>();
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(x =>
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowBlazorClient", policy =>
     {
-        x.TokenValidationParameters = new TokenValidationParameters
+        policy.WithOrigins("https://localhost:7177") // Puerto del cliente Blazor
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // Necesario para SignalR con autenticación
+    });
+});
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = false,
             ValidateAudience = false,
@@ -44,27 +54,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["jwtKey"]!)),
             ClockSkew = TimeSpan.Zero,
         };
-        // 👇 Esta parte es clave para SignalR
-        //x.Events = new JwtBearerEvents
-        //{
-        //    OnMessageReceived = context =>
-        //    {
-        //        var accessToken = context.Request.Query["access_token"];
-        //        var path = context.HttpContext.Request.Path;
-
-        //        // Solo aplica para conexiones al Hub
-        //        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/NotifyHub"))
-        //        {
-        //            context.Token = accessToken;
-        //        }
-
-        //        return Task.CompletedTask;
-        //    }
-        //};
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                // Permitir pasar el token por query para SignalR
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && (path.StartsWithSegments("/NotifyHub")))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 builder.Services.AddScoped<IFileStorage, FileStorage>();
 builder.Services.AddSignalR();
-builder.Services.AddAuthorizationCore();
+builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -84,16 +92,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors("AllowBlazorClient");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
-app.UseCors(x => x
-    .WithOrigins("https://localhost:7177")
-    .AllowAnyHeader()
-    .AllowAnyMethod()
-    .SetIsOriginAllowed(origin => true)
-    .AllowCredentials());
-app.MapHub<NotifyHub>("/NotifyHub");
+app.MapHub<NotifyHub>("/Notifyhub").RequireCors("AllowBlazorClient");
 
 app.Run();

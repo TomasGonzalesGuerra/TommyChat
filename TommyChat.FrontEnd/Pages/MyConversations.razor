@@ -1,0 +1,132 @@
+﻿@page "/MyConversations"
+@inject HubConnection hubConnection
+@inject IRepository _repository
+@inject NavigationManager _navigationManager
+@inject SweetAlertService _sweetAlertService
+@attribute [Authorize(Roles = "SuperAdmin,User")]
+
+<PageTitle>MyConversations</PageTitle>
+
+<h3>MyConversations</h3>
+
+<MudGrid>
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-4">
+            <MudStack Spacing="4" Wrap="Wrap.Wrap">
+                <MudText Typo="Typo.h6"> Desde el TestPrivateMessage </MudText>
+
+                @foreach (var item in ConnectMessage)
+                {
+                    <MudStack Row="true">
+                        <MudStack Justify="Justify.Center" Spacing="0">
+                            <MudText Typo="Typo.body1"> @item </MudText>
+                        </MudStack>
+                    </MudStack>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-4">
+            <MudStack Spacing="4" Wrap="Wrap.Wrap">
+                <MudText Typo="Typo.h6"> Desde el New </MudText>
+                
+                @if (mensajeRecibido is not null)
+                {
+                    <MudStack Row="true">
+                        <MudStack Justify="Justify.Center" Spacing="0">
+                            <MudText Typo="Typo.body1"> @mensajeRecibido</MudText>
+                        </MudStack>
+                    </MudStack>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+
+
+@code {
+    private User UserMe = new();
+    // HubConnection? _hubConnection;
+    private List<string> ConnectMessage = [];
+    private string MessageInput { get; set; } = string.Empty;
+    private string? mensajeRecibido;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Iniciar la conexión si está desconectada
+        if (hubConnection.State == HubConnectionState.Disconnected)
+        {
+            await hubConnection.StartAsync();
+            Console.WriteLine("Conexión SignalR iniciada.");
+        }
+
+        // Escuchar un evento llamado "RecibirMensaje"
+        hubConnection.On<string>("RecibirMensaje", (mensaje) =>
+        {
+            mensajeRecibido = mensaje;
+            InvokeAsync(() => StateHasChanged()); // Actualiza la UI
+        });
+        
+        hubConnection.On<string>("ReciveTestMessage", ReciveTestMessage);
+    }
+    
+    // protected override async Task OnInitializedAsync()
+    // {
+    //     await LoadMeAsyc();
+
+    //     _hubConnection = new HubConnectionBuilder()
+    //         .WithUrl($"https://localhost:7067/NotifyHub?userSellerId={UserMe.Id}&userSellerName={UserMe.FullName}")
+    //         .WithAutomaticReconnect()
+    //         .Build();
+
+    //     _hubConnection.On<string>("ReciveTestMessage", ReciveTestMessage);
+
+    //     await _hubConnection.StartAsync();
+    // }
+
+    private async Task LoadMeAsyc()
+    {
+        var responseHTTP = await _repository.GetAsync<User>("/api/Accounts/Profile");
+
+        if (responseHTTP.Error)
+        {
+            if (responseHTTP.HttpResponseMessage.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                _navigationManager.NavigateTo("/");
+                return;
+            }
+
+            var messageError = await responseHTTP.GetErrorMessageAsync();
+            await _sweetAlertService.FireAsync("Error", messageError, SweetAlertIcon.Error);
+            return;
+        }
+
+        UserMe = responseHTTP.Response!;
+    }
+
+    private void ReciveTestMessage(string message)
+    {
+        if (!string.IsNullOrEmpty(message))
+        {
+            ConnectMessage.Add(message);
+            InvokeAsync(() => StateHasChanged());
+        }
+
+        Console.WriteLine($"ReciveTestMessage: {message}");
+    }
+
+    // private async ValueTask DisposeAsync()
+    // {
+    //     if (_hubConnection is not null)
+    //     {
+    //         await _hubConnection.DisposeAsync();
+    //     }
+    // }
+
+
+
+}

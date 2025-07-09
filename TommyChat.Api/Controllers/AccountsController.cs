@@ -67,11 +67,11 @@ namespace TommyChat.API.Controllers
         {
             var claims = new List<Claim>
             {
-                new(ClaimTypes.Name,  user.Email!),
-                new(ClaimTypes.Role,  user.UserType.ToString()),
+                new(ClaimTypes.Name, user.Email!),
+                new(ClaimTypes.Role, user.UserType.ToString()),
                 new(ClaimTypes.NameIdentifier, user.Id),
-                new("FullName",  user.FullName!),
-                new("Photo",  user.Photo  ??  string.Empty),
+                new("FullName", user.FullName!.ToString()),
+                new("Photo", user.Photo  ??  string.Empty),
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["jwtKey"]!));
@@ -98,6 +98,16 @@ namespace TommyChat.API.Controllers
             var user = await _userHelper.GetUserAsync(User.Identity!.Name!);
             if (user == null) return Unauthorized("User not authenticated.");
             return Ok(user);
+        }
+
+        [HttpGet("AllUsers")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<ActionResult<List<User>>> GetAllUsers()
+        {
+            if (_dataContext.Users == null) return NotFound("Entidad NO Encontrada");
+            List<User> allUsers = await _dataContext.Users.Where(u => u.UserType == UserType.User).OrderBy(u => u.FullName).ToListAsync();
+            if (allUsers == null) return NotFound("Usuarios NO Encontrados");
+            return Ok(allUsers);
         }
 
         // GET: api/Accounts/UserIdReceiver?UserIdReceiver={UserIdReceiver}

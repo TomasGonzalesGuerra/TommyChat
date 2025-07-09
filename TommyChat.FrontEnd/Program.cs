@@ -1,13 +1,14 @@
+using Blazored.LocalStorage;
 using CurrieTechnologies.Razor.SweetAlert2;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.AspNetCore.SignalR.Client;
 using MudBlazor;
 using MudBlazor.Services;
 using TommyChat.FrontEnd;
 using TommyChat.FrontEnd.Auth;
 using TommyChat.FrontEnd.Repositories;
-using TommyChat.FrontEnd.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -32,6 +33,22 @@ builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<AuthenticationProviderJWT>();
 builder.Services.AddScoped<AuthenticationStateProvider, AuthenticationProviderJWT>(x => x.GetRequiredService<AuthenticationProviderJWT>());
 builder.Services.AddScoped<ILoginService, AuthenticationProviderJWT>(x => x.GetRequiredService<AuthenticationProviderJWT>());
-builder.Services.AddScoped<NotifyService>();
+builder.Services.AddBlazoredLocalStorage();
+builder.Services.AddScoped<HubConnection>(sp =>
+{
+    var localStorage = sp.GetRequiredService<ILocalStorageService>();
+
+    return new HubConnectionBuilder()
+        .WithUrl("https://localhost:7067/Notifyhub", options =>
+        {
+            options.AccessTokenProvider = async () =>
+            {
+                var token = await localStorage.GetItemAsync<string>("jwt_token");
+                return token;
+            };
+        })
+        .WithAutomaticReconnect()
+        .Build();
+});
 
 await builder.Build().RunAsync();
