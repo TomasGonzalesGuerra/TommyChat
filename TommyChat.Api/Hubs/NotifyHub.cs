@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
-using TommyChat.Shared.DTOs;
 
 namespace TommyChat.Api.Hubs;
 
@@ -14,6 +13,7 @@ public class NotifyHub : Hub
     public override async Task OnConnectedAsync()
     {
         var email = Context.User?.FindFirst(ClaimTypes.Name)?.Value;
+        
         if (email is not null)
         {
             lock (_userConnections)
