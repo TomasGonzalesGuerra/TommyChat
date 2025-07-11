@@ -1,4 +1,5 @@
-﻿@page "/ChatPrivado"
+﻿@page "/ChatConnented"
+@using System.Security.Claims;
 @inject HubConnection hubConnection
 @inject Blazored.LocalStorage.ILocalStorageService localStorage
 @inject IRepository _repository
@@ -39,38 +40,46 @@
 
 @foreach (var usuario in chatsAbiertos.Keys)
 {
-    string estilo = $"position: absolute; bottom: 0; right: {20 * chatsAbiertos.Keys.ToList().IndexOf(usuario)}rem; width:20rem;";
-    <MudPaper Class="pa-2" Style="@estilo">
+    string estilo = $"position: absolute; bottom: 0; right: {20.5 * chatsAbiertos.Keys.ToList().IndexOf(usuario)}rem; width:20rem;";
+    <MudPaper Class="pa-1" Style="@estilo" >
         <MudStack Spacing="2">
             <!-- Encabezado siempre visible -->
             <MudButton OnClick="@(() => ToggleChat(usuario))" FullWidth="true">
                 <MudAvatar Color="Color.Tertiary" Class="mr-3">@usuario[0]</MudAvatar>
                 @usuario
+
+                @if (conversaciones.ContainsKey(usuario))
+                {
+                    var noLeidos = conversaciones[usuario].Count(m => !m.Leido && m.Remitente != miEmail);
+                    if (noLeidos > 0 && !chatsAbiertos[usuario])
+                    {
+                        <MudBadge Color="Color.Error" Content="@noLeidos" Class="ml-2" />
+                    }
+                }
             </MudButton>
 
-            <MudCollapse Expanded="_expanded" Style="@_expandedClas">
-                    @foreach (var item in conversaciones[usuario])
-                    {
-                        <MudChat ChatPosition="@(item.Remitente == miEmail ? ChatBubblePosition.End : ChatBubblePosition.Start)">
-                            @if (item.Remitente == miEmail)
-                            {
-                                <MudAvatar> Yo </MudAvatar>                    
-                            }
-                            else
-                            {
-                                <MudAvatar> @usuario[0] </MudAvatar>
-                            }
-                            <MudChatBubble>
-                                @item.Contenido
-                            </MudChatBubble>
-                        </MudChat>
-                    }
+            <MudCollapse Expanded="_expanded" Style="@_expandedClas" Class="animate-chat">
+                @foreach (var item in conversaciones[usuario])
+                {
+                    <MudChat ChatPosition="@(item.Remitente == miEmail ? ChatBubblePosition.End : ChatBubblePosition.Start)">
+                        <MudChatHeader Time="@_nowTime" />
+                        <MudChatBubble> @item.Contenido </MudChatBubble>
+                        @if (item.Remitente != miEmail)
+                        {                    
+                            <MudChatFooter>
+                                <MudText Typo="Typo.caption" Color="@(item.Leido ? Color.Default : Color.Error)">
+                                    @(item.Leido ? "Leído" : "No leído")
+                                </MudText>
+                            </MudChatFooter>
+                        }
+                    </MudChat>
+                }
             </MudCollapse>
             
             @if (!string.IsNullOrWhiteSpace(_expandedClas))
             {
                 <MudItem Class="d-flex justify-space-between align-center mt-2">
-                    <MudTextField @bind-Value="mensajeTemporal[usuario]" Label="Mensaje" Variant="Variant.Outlined" OnKeyDown="@(e => DetectarEnter(e, usuario))" />
+                    <MudTextField @bind-Value="mensajeTemporal[usuario]" Label="Mensaje" Variant="Variant.Outlined" OnKeyDown="@((KeyboardEventArgs e) => DetectarEnter(e, usuario))" />
                     <MudIconButton OnClick="@(() => EnviarMensaje(usuario))" Icon="@Icons.Material.Outlined.Send" />
                 </MudItem>
             }
@@ -80,39 +89,43 @@
 
 
 @code {
-    private string miEmail { get; set; } = string.Empty;
-    private List<string> usuariosConectados = new();
-    private Dictionary<string, bool> chatsAbiertos = new(); // usuarioEmail => expandido
-    private Dictionary<string, List<MensajeDTO>> conversaciones = new(); // usuarioEmail => mensajes
-    private Dictionary<string, string> mensajeTemporal = new(); // usuario => mensaje actual
     private bool _expanded;
+    private Dictionary<string, List<MensajeDTO>> conversaciones = new();
+    private Dictionary<string, string> mensajeTemporal = new();
+    private Dictionary<string, bool> chatsAbiertos = new();
+    private List<string> usuariosConectados = [];
+    private List<MensajeDTO> mensajes = [];
+    private string _nowTime = DateTime.Now.ToLocalTime().ToString();
+    private string miEmail { get; set; } = string.Empty;
+    private string mensaje { get; set; } = string.Empty;
     private string _expandedClas { get; set; } = string.Empty;
     private string destinatario { get; set; } = string.Empty;
-    private string mensaje { get; set; } = string.Empty;
-    private List<MensajeDTO> mensajes = [];
 
     private class MensajeDTO
     {
         public string Remitente { get; set; } = string.Empty;
         public string Contenido { get; set; } = string.Empty;
+        public bool Leido { get; set; } = false;
     }
 
 
     protected override async Task OnInitializedAsync()
     {
         await ObtenerMiEmail();
+        
+        if (hubConnection.State == HubConnectionState.Disconnected) await hubConnection.StartAsync();
 
         hubConnection.On<string, string>("RecibirMensajePrivado", (remitente, contenido) =>
         {
             if (!conversaciones.ContainsKey(remitente))
             {
                 conversaciones[remitente] = new();
-                mensajeTemporal[remitente] = "";
+                mensajeTemporal[remitente] = string.Empty;
                 chatsAbiertos[remitente] = true;
             }
 
             conversaciones[remitente].Add(new MensajeDTO { Remitente = remitente, Contenido = contenido });
-            StateHasChanged();
+            InvokeAsync(() => StateHasChanged());
         });
 
         hubConnection.On<List<string>>("UsuariosConectados", (usuarios) =>
@@ -125,15 +138,9 @@
             {
                 usuariosConectados = usuarios;
             }
-
-            StateHasChanged();
-        });
-
-        if (hubConnection.State == HubConnectionState.Disconnected)
-        {
-            await hubConnection.StartAsync();
-            Console.WriteLine("Conexión SignalR iniciada.");
-        }
+            
+            InvokeAsync(() => StateHasChanged());
+        });        
     }
 
     private async Task ObtenerMiEmail()
@@ -144,48 +151,24 @@
         var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(token);
 
-        miEmail = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
-        Console.WriteLine($"Mi email detectado: {miEmail}");
-    }
-
-    private void SeleccionarDestinatario(string usuario)
-    {
-        if (!chatsAbiertos.ContainsKey(usuario))
-        {
-            chatsAbiertos[usuario] = true;
-            conversaciones[usuario] = new();
-            mensajeTemporal[usuario] = "";
-        }
-        else
-        {
-            chatsAbiertos[usuario] = true;
-        }
-    }
-
-    private void ToggleChat(string usuario)
-    {
-        if (chatsAbiertos.ContainsKey(usuario))
-        {
-            chatsAbiertos[usuario] = !chatsAbiertos[usuario];
-            _expanded = !_expanded;
-            _expandedClas = _expanded ? "height: 15rem;" : string.Empty;
-        }
+        miEmail = jwt.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)!.Value;
     }
 
     private async Task EnviarMensaje(string destinatario)
     {
         var mensaje = mensajeTemporal[destinatario];
+
         if (!string.IsNullOrWhiteSpace(mensaje))
         {
             await hubConnection.InvokeAsync("EnviarMensajePrivado", destinatario, mensaje);
             conversaciones[destinatario].Add(new MensajeDTO { Remitente = miEmail, Contenido = mensaje });
-            mensajeTemporal[destinatario] = "";
+            mensajeTemporal[destinatario] = string.Empty;
         }
     }
 
     private async Task DetectarEnter(KeyboardEventArgs e, string destinatario)
     {
-        if (e.Key == "Enter" && !e.ShiftKey)
+        if (e.Key == "Enter")
         {
             await EnviarMensaje(destinatario);
         }
@@ -196,6 +179,40 @@
         if (hubConnection is not null)
         {
             await hubConnection.DisposeAsync();
+        }
+    }
+
+    private void SeleccionarDestinatario(string usuario)
+    {
+        if (!chatsAbiertos.ContainsKey(usuario))
+        {
+            chatsAbiertos[usuario] = true;
+            conversaciones[usuario] = new();
+            mensajeTemporal[usuario] = string.Empty;
+            _expanded = !_expanded;
+            _expandedClas = _expanded ? "height: 15rem;" : string.Empty;
+        }
+        else
+        {
+            chatsAbiertos[usuario] = true;
+        }
+    }
+
+    private void ToggleChat(string usuario)
+    {            
+        if (chatsAbiertos.ContainsKey(usuario))
+        {
+            _expanded = !_expanded;
+            _expandedClas = _expanded ? "height: 15rem;" : string.Empty;
+            chatsAbiertos[usuario] = !chatsAbiertos[usuario];
+
+            if (chatsAbiertos[usuario] && conversaciones.ContainsKey(usuario))
+            {
+                foreach (var mensaje in conversaciones[usuario])
+                {
+                    mensaje.Leido = true;
+                }
+            }
         }
     }
 }

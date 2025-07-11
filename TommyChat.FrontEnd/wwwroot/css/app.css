@@ -87,3 +87,19 @@ th.mud-table-cell, td.mud-table-cell {
 .mud-select .mud-select-input .mud-input-slot {
     height: auto;
 }
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.animate-chat {
+    animation: slideUp 0.3s ease-out;
+}

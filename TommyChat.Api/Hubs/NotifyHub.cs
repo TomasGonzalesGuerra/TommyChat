@@ -6,9 +6,9 @@ using System.Security.Claims;
 namespace TommyChat.Api.Hubs;
 
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-public class NotifyHub : Hub
+public class NotifyHub : Hub<INotifyHub>
 {
-    private static readonly Dictionary<string, List<string>> _userConnections = new();
+    private static readonly Dictionary<string, List<string>> _userConnections = [];
 
     public override async Task OnConnectedAsync()
     {
@@ -19,7 +19,7 @@ public class NotifyHub : Hub
             lock (_userConnections)
             {
                 if (!_userConnections.ContainsKey(email))
-                    _userConnections[email] = new List<string>();
+                    _userConnections[email] = [];
 
                 _userConnections[email].Add(Context.ConnectionId);
             }
@@ -54,7 +54,7 @@ public class NotifyHub : Hub
     private Task NotificarUsuariosConectados()
     {
         var usuarios = _userConnections.Keys.ToList();
-        return Clients.All.SendAsync("UsuariosConectados", usuarios);
+        return Clients.All.UsuariosConectados(usuarios);
     }
 
     public async Task EnviarMensajePrivado(string destinatarioEmail, string mensaje)
@@ -65,7 +65,7 @@ public class NotifyHub : Hub
         {
             foreach (var connectionId in conexiones)
             {
-                await Clients.Client(connectionId).SendAsync("RecibirMensajePrivado", remitente, mensaje);
+                await Clients.Client(connectionId).RecibirMensajePrivado(remitente, mensaje);
             }
         }
     }
