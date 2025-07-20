@@ -113,39 +113,36 @@
     {
         await ObtenerMiEmail();
         
+        hubConnection.On<string, string>("RecibirMensajePrivado", RecibirMensajePrivado);
+        hubConnection.On<List<string>>("UsuariosConectados", UsuariosConectados);
         if (hubConnection.State == HubConnectionState.Disconnected) await hubConnection.StartAsync();
+    }
 
-        hubConnection.On<string, string>("RecibirMensajePrivado", (remitente, contenido) =>
+    private void RecibirMensajePrivado(string remitente, string contenido)
+    {
+        if (!conversaciones.ContainsKey(remitente))
         {
-            if (!conversaciones.ContainsKey(remitente))
-            {
-                conversaciones[remitente] = new();
-                mensajeTemporal[remitente] = string.Empty;
-                chatsAbiertos[remitente] = true;
-            }
+            conversaciones[remitente] = new();
+            mensajeTemporal[remitente] = string.Empty;
+            chatsAbiertos[remitente] = true;
+        }
 
-            conversaciones[remitente].Add(new MensajeDTO { Remitente = remitente, Contenido = contenido });
-            InvokeAsync(() => StateHasChanged());
-        });
+        conversaciones[remitente].Add(new MensajeDTO { Remitente = remitente, Contenido = contenido });
+        InvokeAsync(() => StateHasChanged());
+    }
 
-        hubConnection.On<List<string>>("UsuariosConectados", (usuarios) =>
-        {
-            if (!string.IsNullOrWhiteSpace(miEmail))
-            {
-                usuariosConectados = usuarios.Where(u => u != miEmail).ToList();
-            }
-            else
-            {
-                usuariosConectados = usuarios;
-            }
-            
-            InvokeAsync(() => StateHasChanged());
-        });        
+    private void UsuariosConectados(List<string> usuarios)
+    {
+        if (!string.IsNullOrWhiteSpace(miEmail)) usuariosConectados = usuarios.Where(u => u != miEmail).ToList();
+
+        usuariosConectados = usuarios;
+
+        InvokeAsync(() => StateHasChanged());
     }
 
     private async Task ObtenerMiEmail()
     {
-        var token = await localStorage.GetItemAsync<string>("jwt_token");
+        var token = await localStorage.GetItemAsync<string>("JwtKey");
         if (string.IsNullOrWhiteSpace(token)) return;
 
         var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();

@@ -43,7 +43,7 @@ builder.Services.AddScoped<HubConnection>(sp =>
         {
             options.AccessTokenProvider = async () =>
             {
-                var token = await localStorage.GetItemAsync<string>("jwt_token");
+                var token = await localStorage.GetItemAsync<string>("JwtKey");
                 return token;
             };
         })

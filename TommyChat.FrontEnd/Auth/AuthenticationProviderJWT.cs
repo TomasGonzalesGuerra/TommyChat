@@ -10,7 +10,7 @@ namespace TommyChat.FrontEnd.Auth
     {
         private readonly ILocalStorageService _localStorage;
         private readonly HttpClient _httpClient;
-        private readonly string _tokenKey = "jwt_token";
+        private readonly string _tokenKey = "JwtKey";
         private readonly AuthenticationState _anonymous = new(new ClaimsPrincipal(new ClaimsIdentity()));
 
         public AuthenticationProviderJWT(ILocalStorageService localStorage, HttpClient httpClient)
@@ -32,7 +32,7 @@ namespace TommyChat.FrontEnd.Auth
         {
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
             var claims = ParseClaimsFromJWT(token);
-            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(claims, "jwt")));
+            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(claims, "JwtKey")));
         }
 
         private IEnumerable<Claim> ParseClaimsFromJWT(string token)

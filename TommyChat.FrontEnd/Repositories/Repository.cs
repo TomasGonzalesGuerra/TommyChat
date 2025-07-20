@@ -3,19 +3,11 @@ using System.Text.Json;
 
 namespace TommyChat.FrontEnd.Repositories
 {
-    public class Repository : IRepository
+    public class Repository(HttpClient httpClient) : IRepository
     {
-        private readonly HttpClient _httpClient;
+        private readonly HttpClient _httpClient = httpClient;
+        private JsonSerializerOptions _jsonDefaultOptions => new() { PropertyNameCaseInsensitive = true, };
 
-        public Repository(HttpClient httpClient)
-        {
-            _httpClient = httpClient;
-        }
-
-        private JsonSerializerOptions _jsonDefaultOptions => new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-        };
 
         public async Task<HttpResponseWrapper<object>> GetAsync(string url)
         {
