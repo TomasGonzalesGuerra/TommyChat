@@ -16,20 +16,9 @@
                 <MudText Typo="Typo.h6"> 🟢 Conectados </MudText>
                 @foreach (var item in usuariosConectados)
                 {
-                    <MudStack Row="true" @onclick="@(() => SeleccionarDestinatario(item))">
-                        @* @if (string.IsNullOrEmpty(item.UserPhoto))
-                        {
-                            <MudAvatar Color="Color.Tertiary"> @item.UserName![0] </MudAvatar>
-                        }
-                        else
-                        {
-                            <MudAvatar Size="Size.Large"> <MudImage Src="@item.UserName" /> </MudAvatar>
-                        } *@
-                        <MudStack Justify="Justify.Center" Spacing="0">
-                            @* <MudText Typo="Typo.body1"> @item.UserName </MudText>
-                            <MudText Typo="Typo.body2"> @item.UserEmail </MudText> *@
-                            <MudText Typo="Typo.body2"> @item </MudText>
-                        </MudStack>
+                    <MudStack Row="true" @onclick="@(() => SeleccionarDestinatario(item))" AlignItems="AlignItems.Center">
+                        <MudAvatar Size="Size.Large"> @item[0] </MudAvatar>
+                        <MudText Typo="Typo.body1" Color="Color.Inherit"> @item </MudText>
                     </MudStack>
                 }
             </MudStack>
@@ -90,11 +79,11 @@
 
 @code {
     private bool _expanded;
-    private Dictionary<string, List<MensajeDTO>> conversaciones = new();
-    private Dictionary<string, string> mensajeTemporal = new();
-    private Dictionary<string, bool> chatsAbiertos = new();
-    private List<string> usuariosConectados = [];
     private List<MensajeDTO> mensajes = [];
+    private List<string> usuariosConectados = [];
+    private Dictionary<string, bool> chatsAbiertos = new();
+    private Dictionary<string, string> mensajeTemporal = new();
+    private Dictionary<string, List<MensajeDTO>> conversaciones = new();
     private string _nowTime = DateTime.Now.ToLocalTime().ToString();
     private string miEmail { get; set; } = string.Empty;
     private string mensaje { get; set; } = string.Empty;
@@ -112,7 +101,7 @@
     protected override async Task OnInitializedAsync()
     {
         await ObtenerMiEmail();
-        
+
         hubConnection.On<string, string>("RecibirMensajePrivado", RecibirMensajePrivado);
         hubConnection.On<List<string>>("UsuariosConectados", UsuariosConectados);
         if (hubConnection.State == HubConnectionState.Disconnected) await hubConnection.StartAsync();
@@ -133,9 +122,14 @@
 
     private void UsuariosConectados(List<string> usuarios)
     {
-        if (!string.IsNullOrWhiteSpace(miEmail)) usuariosConectados = usuarios.Where(u => u != miEmail).ToList();
-
-        usuariosConectados = usuarios;
+        if (!string.IsNullOrWhiteSpace(miEmail))
+        {            
+            usuariosConectados = usuarios.Where(u => u != miEmail).ToList();
+        }
+        else
+        {            
+            usuariosConectados = usuarios;
+        }
 
         InvokeAsync(() => StateHasChanged());
     }
@@ -196,7 +190,7 @@
     }
 
     private void ToggleChat(string usuario)
-    {            
+    {
         if (chatsAbiertos.ContainsKey(usuario))
         {
             _expanded = !_expanded;
@@ -212,4 +206,8 @@
             }
         }
     }
+
+   
+
+
 }

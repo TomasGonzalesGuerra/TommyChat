@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
+using TommyChat.Shared.DTOs;
 
 namespace TommyChat.Api.Hubs;
 
