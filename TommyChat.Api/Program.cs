@@ -16,7 +16,7 @@ builder.Services.AddControllers().AddJsonOptions(x => x.JsonSerializerOptions.Re
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddDbContext<DataContext>(dc => dc.UseSqlServer("name=LocalConnection"));
+builder.Services.AddDbContext<DataContext>(dc => dc.UseSqlServer(builder.Configuration["ConnectionStrings:LocalConnection"]));
 builder.Services.AddTransient<SeedDb>();
 builder.Services.AddIdentity<User, IdentityRole>(x =>
 {
@@ -48,14 +48,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = false,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["jwtKey"]!)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtKey"]!)),
             ClockSkew = TimeSpan.Zero,
         };
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
             {
-                // Permitir pasar el token por query para SignalR
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
                 if (!string.IsNullOrEmpty(accessToken) && (path.StartsWithSegments("/NotifyHub")))

@@ -1,13 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using TommyChat.Api.Hubs;
 using TommyChat.API.Data;
 using TommyChat.API.Helpers;
 using TommyChat.Shared.DTOs;
@@ -18,13 +16,12 @@ namespace TommyChat.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AccountsController(DataContext datacontext, IUserHelper userHelper, IConfiguration configuration, IFileStorage fileStorage, UserManager<User> userManager) : ControllerBase
+    public class AccountsController(DataContext datacontext, IUserHelper userHelper, IConfiguration configuration, IFileStorage fileStorage) : ControllerBase
     {
         private readonly DataContext _dataContext = datacontext;
         private readonly IUserHelper _userHelper = userHelper;
         private readonly IConfiguration _configuration = configuration;
         private readonly IFileStorage _fileStorage = fileStorage;
-        private readonly UserManager<User> _userManager = userManager;
         private readonly string _container = "users";
 
         [HttpPost("CreateUser")]
@@ -74,7 +71,7 @@ namespace TommyChat.API.Controllers
                 new("Photo", user.Photo  ??  string.Empty),
             };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["jwtKey"]!));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtKey"]!));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var expiration = DateTime.UtcNow.AddDays(30); var token = new JwtSecurityToken(
                 issuer: null,
@@ -108,16 +105,6 @@ namespace TommyChat.API.Controllers
             List<User> allUsers = await _dataContext.Users.Where(u => u.UserType == UserType.User).OrderBy(u => u.FullName).ToListAsync();
             if (allUsers == null) return NotFound("Usuarios NO Encontrados");
             return Ok(allUsers);
-        }
-
-        // GET: api/Accounts/UserIdReceiver?UserIdReceiver={UserIdReceiver}
-        [HttpGet("UserIdReceiver")]
-        public async Task<ActionResult<User>> GetUserAsync([FromQuery] string UserIdReceiver)
-        {
-            if (_dataContext.Users == null) return BadRequest("Entidad Users NO Enconttrada");
-            User user = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == UserIdReceiver);
-            if (user == null) return BadRequest(NotFound($"Usuario con email '{UserIdReceiver}' no encontrado"));
-            return Ok(user);
         }
 
         [HttpPut]
@@ -169,25 +156,5 @@ namespace TommyChat.API.Controllers
                 return BadRequest(ex.Message);
             }
         }
-
-
-
-
-
-
-        //[HttpGet("GetUserAllNotis")]
-        //[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        //public async Task<IActionResult> GetUserAllNotis()
-        //{
-        //    User user = await _userHelper.GetUserAsync(User.Identity!.Name!);
-        //    if (user == null) return Unauthorized("User not authenticated.");
-
-        //    List<Notification> notifications = await _dataContext.Notifications
-        //        .Where(n => n.UserId == user.Id)
-        //        .OrderByDescending(n => n.CreatedAt)
-        //        .ToListAsync();
-
-        //    return Ok(notifications);
-        //}
     }
 }
