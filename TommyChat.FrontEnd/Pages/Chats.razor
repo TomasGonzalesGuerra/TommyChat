@@ -9,22 +9,27 @@
 
 <PageTitle>Chats Privados </PageTitle>
 
-<MudGrid>
-    <MudItem xs="12" md="4">
-        <MudPaper Class="pa-4">
-            <MudStack Spacing="4">
-                <MudText Typo="Typo.h6"> 🟢 Conectados </MudText>
-                @foreach (var item in usuariosConectados)
-                {
-                    <MudStack Row="true" @onclick="@(() => SeleccionarDestinatario(item))" AlignItems="AlignItems.Center">
-                        <MudAvatar Size="Size.Large"> @item[0] </MudAvatar>
-                        <MudText Typo="Typo.body1" Color="Color.Inherit"> @item </MudText>
-                    </MudStack>
-                }
+<MudPaper Class="pa-4" Style="border-radius:1rem;">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">Usuarios conectados 🟢</MudText>
+
+        @foreach (var user in usuariosConectados)
+        {
+            <MudStack Row="true" @onclick="@(() => SeleccionarDestinatario(user))"
+                      Style="cursor:pointer; border-radius:8px;"
+                      Class="px-2 py-1 hover-contact card-fade-in"
+                      AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    <MudAvatar Size="Size.Medium" Color="Color.Success">@user[0]</MudAvatar>
+                    <MudText Typo="Typo.body1">@user</MudText>
+                    <MudIconButton Icon="@Icons.Material.Filled.Chat" Size="Size.Small" />
+                </MudStack>
             </MudStack>
-        </MudPaper>
-    </MudItem>
-</MudGrid>
+        }
+    </MudStack>
+</MudPaper>
+
 
 
 @foreach (var usuario in chatsAbiertos.Keys)
@@ -68,7 +73,15 @@
             @if (!string.IsNullOrWhiteSpace(_expandedClas))
             {
                 <MudItem Class="d-flex justify-space-between align-center mt-2">
-                    <MudTextField @bind-Value="mensajeTemporal[usuario]" Label="Mensaje" Variant="Variant.Outlined" OnKeyDown="@((KeyboardEventArgs e) => DetectarEnter(e, usuario))" />
+                    <MudTextField T="string"
+                                  @bind-Value="_userInput"
+                                  Immediate="true"
+                                  TextUpdateSuppression="false"
+                                  KeyDownPreventDefault="_preventDefault"
+                                  OnKeyDown="@((KeyboardEventArgs e) => HandleKeyDown(e, usuario))"
+                                  Label="Mensaje"
+                                  Variant="Variant.Outlined" />
+
                     <MudIconButton OnClick="@(() => EnviarMensaje(usuario))" Icon="@Icons.Material.Outlined.Send" />
                 </MudItem>
             }
@@ -77,12 +90,14 @@
 }
 
 
+
 @code {
     private bool _expanded;
+    private bool _preventDefault;
+    private string _userInput = string.Empty;
     private List<MensajeDTO> mensajes = [];
     private List<string> usuariosConectados = [];
     private Dictionary<string, bool> chatsAbiertos = new();
-    private Dictionary<string, string> mensajeTemporal = new();
     private Dictionary<string, List<MensajeDTO>> conversaciones = new();
     private string _nowTime = DateTime.Now.ToLocalTime().ToString();
     private string miEmail { get; set; } = string.Empty;
@@ -112,7 +127,7 @@
         if (!conversaciones.ContainsKey(remitente))
         {
             conversaciones[remitente] = new();
-            mensajeTemporal[remitente] = string.Empty;
+            _userInput = string.Empty;
             chatsAbiertos[remitente] = true;
         }
 
@@ -130,6 +145,7 @@
         {            
             usuariosConectados = usuarios;
         }
+        usuariosConectados = usuarios;
 
         InvokeAsync(() => StateHasChanged());
     }
@@ -147,19 +163,19 @@
 
     private async Task EnviarMensaje(string destinatario)
     {
-        var mensaje = mensajeTemporal[destinatario];
-
-        if (!string.IsNullOrWhiteSpace(mensaje))
+        if (!string.IsNullOrWhiteSpace(_userInput))
         {
-            await hubConnection.InvokeAsync("EnviarMensajePrivado", destinatario, mensaje);
-            conversaciones[destinatario].Add(new MensajeDTO { Remitente = miEmail, Contenido = mensaje });
-            mensajeTemporal[destinatario] = string.Empty;
+            await hubConnection.InvokeAsync("EnviarMensajePrivado", destinatario, _userInput);
+            conversaciones[destinatario].Add(new MensajeDTO { Remitente = miEmail, Contenido = _userInput });
+            _userInput = string.Empty;
         }
     }
 
-    private async Task DetectarEnter(KeyboardEventArgs e, string destinatario)
+    private async Task HandleKeyDown(KeyboardEventArgs e, string destinatario)
     {
-        if (e.Key == "Enter")
+        _preventDefault = e.Key == "Enter" && !e.ShiftKey;
+
+        if (e.Key == "Enter" && !e.ShiftKey)
         {
             await EnviarMensaje(destinatario);
         }
@@ -179,7 +195,7 @@
         {
             chatsAbiertos[usuario] = true;
             conversaciones[usuario] = new();
-            mensajeTemporal[usuario] = string.Empty;
+            _userInput = string.Empty;
             _expanded = !_expanded;
             _expandedClas = _expanded ? "height: 15rem;" : string.Empty;
         }
