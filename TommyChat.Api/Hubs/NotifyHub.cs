@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using System.Collections.Concurrent;
 using System.Security.Claims;
 
 namespace TommyChat.Api.Hubs;
@@ -8,7 +9,7 @@ namespace TommyChat.Api.Hubs;
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class NotifyHub : Hub<INotifyHub>
 {
-    private static readonly Dictionary<string, List<string>> _userConnections = [];
+    private static readonly ConcurrentDictionary<string, HashSet<string>> _userConnections = new();
 
     public override async Task OnConnectedAsync()
     {
@@ -16,12 +17,10 @@ public class NotifyHub : Hub<INotifyHub>
 
         if (email is not null)
         {
-            lock (_userConnections)
+            var conexiones = _userConnections.GetOrAdd(email, _ => []);
+            lock (conexiones)
             {
-                if (!_userConnections.ContainsKey(email))
-                    _userConnections[email] = [];
-
-                _userConnections[email].Add(Context.ConnectionId);
+                conexiones.Add(Context.ConnectionId);
             }
 
             await NotificarUsuariosConectados();
@@ -33,15 +32,15 @@ public class NotifyHub : Hub<INotifyHub>
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var email = Context.User?.FindFirst(ClaimTypes.Name)?.Value;
-        if (email is not null)
+
+        if (email is not null && _userConnections.TryGetValue(email, out var conexiones))
         {
-            lock (_userConnections)
+            lock (conexiones)
             {
-                if (_userConnections.ContainsKey(email))
+                conexiones.Remove(Context.ConnectionId);
+                if (conexiones.Count == 0)
                 {
-                    _userConnections[email].Remove(Context.ConnectionId);
-                    if (_userConnections[email].Count == 0)
-                        _userConnections.Remove(email);
+                    _userConnections.TryRemove(email, out _);
                 }
             }
 
@@ -59,7 +58,7 @@ public class NotifyHub : Hub<INotifyHub>
 
     public async Task EnviarMensajePrivado(string destinatarioEmail, string mensaje)
     {
-        var remitente = Context.User?.FindFirst(ClaimTypes.Name)?.Value ?? "Anónimo";
+        var remitente = (Context.User?.FindFirst(ClaimTypes.Name)?.Value) ?? throw new HubException("Usuario no autenticado");
 
         if (_userConnections.TryGetValue(destinatarioEmail, out var conexiones))
         {
