@@ -69,6 +69,7 @@ builder.Services.AddScoped<IFileStorage, FileStorage>();
 builder.Services.AddSignalR();
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<INotifyHub, NotifyHubService>();
+builder.Services.AddScoped<ISignalRAuditLogger, SignalRAuditLogger>();
 
 var app = builder.Build();
 

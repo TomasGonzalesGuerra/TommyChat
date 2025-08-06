@@ -3,12 +3,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Collections.Concurrent;
 using System.Security.Claims;
+using TommyChat.Api.Services;
 
 namespace TommyChat.Api.Hubs;
 
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-public class NotifyHub : Hub<INotifyHub>
+public class NotifyHub(ISignalRAuditLogger auditLogger) : Hub<INotifyHub>
 {
+    private readonly ISignalRAuditLogger _auditLogger = auditLogger;
     private static readonly ConcurrentDictionary<string, HashSet<string>> _userConnections = new();
 
     public override async Task OnConnectedAsync()
@@ -27,6 +29,7 @@ public class NotifyHub : Hub<INotifyHub>
         }
 
         await base.OnConnectedAsync();
+        await _auditLogger.LogConnectedAsync(email!, Context.ConnectionId, ObtenerIp());
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
@@ -48,6 +51,7 @@ public class NotifyHub : Hub<INotifyHub>
         }
 
         await base.OnDisconnectedAsync(exception);
+        await _auditLogger.LogDisconnectedAsync(email!, Context.ConnectionId, ObtenerIp());
     }
 
     private Task NotificarUsuariosConectados()
@@ -67,5 +71,11 @@ public class NotifyHub : Hub<INotifyHub>
                 await Clients.Client(connectionId).RecibirMensajePrivado(remitente, mensaje);
             }
         }
+    }
+
+    private string ObtenerIp()
+    {
+        var httpContext = Context.GetHttpContext();
+        return httpContext?.Connection.RemoteIpAddress?.ToString() ?? "IP no disponible";
     }
 }
