@@ -1,0 +1,111 @@
+﻿<MudPaper Class="pa-1" Style="@($"position: absolute; bottom: 0; right: {RightOffset}rem; width:20rem;")">
+    <MudStack Spacing="2">
+        <MudButton OnClick="@Toggle" FullWidth="true" EndIcon="@Icons.Material.Outlined.Close">
+            <MudAvatar Color="Color.Tertiary" Class="mr-3">@Usuario[0]</MudAvatar>
+            @Usuario
+
+            @if (Conversaciones != null)
+            {
+                var noLeidos = Conversaciones.Count(m => !m.Leido && m.Remitente != MiEmail);
+                if (noLeidos > 0)
+                {
+                    <MudBadge Color="Color.Success" Content="@noLeidos" Class="ml-2" />
+                }
+            }
+        </MudButton>
+
+        <MudCollapse Expanded="@Expandido" Style="@ObtenerEstilo()" Class="animate-chat">
+            @if (Conversaciones != null)
+            {
+                @foreach (var item in Conversaciones)
+                {
+                    <MudChat ChatPosition="@(item.Remitente == MiEmail ? ChatBubblePosition.End : ChatBubblePosition.Start)"
+                             Color="@(item.Remitente == MiEmail ? Color.Success : Color.Primary)" Variant="Variant.Outlined">
+                        <MudChatHeader Time="@item.Fecha.ToShortTimeString()" />
+                        <MudChatBubble>@item.Contenido</MudChatBubble>
+                        @if (item.Remitente != MiEmail)
+                        {
+                            <MudChatFooter>
+                                <MudText Typo="Typo.caption" Color="@(item.Leido? Color.Default: Color.Error)">
+                                    @(item.Leido ? "Leído" : "No leído")
+                                </MudText>
+                            </MudChatFooter>
+                        }
+                    </MudChat>
+                }
+            }
+        </MudCollapse>
+
+        @if (Expandido)
+        {
+            <MudItem Class="d-flex justify-space-between align-center mt-2">
+                <MudTextField T="string"
+                              @bind-Value="UserInput"
+                              Immediate="true"
+                              OnKeyDown="@HandleKeyDown"
+                              Label="Mensaje"
+                              Variant="Variant.Outlined" />
+
+                <MudIconButton OnClick="EnviarMensaje" Icon="@Icons.Material.Outlined.Send" />
+            </MudItem>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] [EditorRequired] public double RightOffset { get; set; }
+    [Parameter] [EditorRequired] public string Usuario { get; set; }
+    [Parameter] [EditorRequired] public string MiEmail { get; set; }
+    [Parameter] [EditorRequired] public EventCallback<string> OnLeido { get; set; }
+    [Parameter] [EditorRequired] public EventCallback<string> OnToggleExpand { get; set; }
+    [Parameter] [EditorRequired] public HubConnection HubConnection { get; set; }
+    [Parameter] [EditorRequired] public List<MensajeDTO> Conversaciones { get; set; }
+
+    private string UserInput { get; set; } = string.Empty;
+    private bool Expandido { get; set; }
+
+
+    protected override void OnInitialized()
+    {
+        ObtenerEstilo();
+    }
+
+    private string ObtenerEstilo() => Expandido ? "height: 15rem;" : string.Empty;
+
+    private void Toggle()
+    {
+        Expandido = !Expandido;
+
+        if (Expandido)
+            OnLeido.InvokeAsync(Usuario);
+
+        OnToggleExpand.InvokeAsync(Usuario);
+    }
+
+    private async Task EnviarMensaje()
+    {
+        if (!string.IsNullOrWhiteSpace(UserInput))
+        {
+            await HubConnection.InvokeAsync("EnviarMensajePrivado", Usuario, UserInput);
+
+            Conversaciones.Add(new MensajeDTO
+            {
+                Remitente = MiEmail,
+                Contenido = UserInput,
+                Leido = true,
+                Fecha = DateTime.Now
+            });
+
+            UserInput = string.Empty;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await EnviarMensaje();
+        }
+    }
+}

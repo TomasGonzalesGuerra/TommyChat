@@ -6,27 +6,48 @@
 
 <PageTitle>Home</PageTitle>
 
-<MudGrid Spacing="3">
-    @foreach (var item in AllUsers)
-    {    
-        <MudItem sm="3">
-            <MudCard Class="mx-auto" Style="border-radius: 1rem;" Elevation="2">
-                <MudCardContent>
-                    <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Start">
-                        <MudAvatar Style="width:80px; height:80px;">
-                            <MudImage Src="@item.Photo" Style="cursor: pointer;"></MudImage>
-                        </MudAvatar>
-
-                        <MudStack Spacing="1">
-                            <MudText Typo="Typo.h6">@item.FullName</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary"> @item.UserType </MudText>
-                            <MudText Typo="Typo.body2"> 📍 Lima, Perú </MudText>
-                            <MudText Typo="Typo.body2"> 📧 @item.Email </MudText>
-                        </MudStack>
-                    </MudStack>
-                </MudCardContent>
-            </MudCard>
+<MudGrid Spacing="3" Justify="Justify.Center">
+    <MudItem xs="12"><MudText Typo="Typo.h4" Align="Align.Center">Biembenid@@ a Tommy Chat</MudText></MudItem>
+    @if (AllUsers == null)
+    {
+        <MudStack Class="pa-4">
+            <MudText Typo="Typo.h1" Color="Color.Error"> Objeto Nulo 😒 </MudText>
+        </MudStack>
+    }
+    else if (AllUsers.Count() == 0)
+    {
+        <MudStack Class="pa-4">
+            <MudImage Src="https://cdn-icons-png.flaticon.com/512/12044/12044970.png" Style="width: auto; height: 50vh; object-fit: cover;" />
+            <MudText Typo="Typo.h6" Color="Color.Error"> Sin Registros </MudText>
+        </MudStack>
+    }
+    else
+    {
+        <MudItem xs="12">
+            <MudText Typo="Typo.subtitle1" Align="Align.Center">Usuarios del Sistema</MudText>
+            <MudText Typo="Typo.body2" Align="Align.Center">Recorre el Sistema como <span style="color: orange;">Anónimo</span> o <span style="color: green;">Logueate</span> 😁</MudText>
         </MudItem>
+        @foreach (var item in AllUsers)
+        {
+            <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudCard Class="mx-auto" Style="border-radius: 1rem;" Elevation="2">
+                    <MudCardContent>
+                        <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Start">
+                            <MudAvatar Style="width:80px; height:80px;">
+                                <MudImage Src="@item.Photo" Style="cursor: pointer;"></MudImage>
+                            </MudAvatar>
+
+                            <MudStack Spacing="1">
+                                <MudText Typo="Typo.h6">@item.FullName</MudText>
+                                <MudText Typo="Typo.body2" Color="@(item.UserType.Equals(UserType.SuperAdmin) ? Color.Success : Color.Primary)"> @item.UserType </MudText>
+                                <MudText Typo="Typo.body2"> 📍 Lima, Perú </MudText>
+                                <MudText Typo="Typo.body2"> 📧 @item.Email </MudText>
+                            </MudStack>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
     }
 </MudGrid>
 
@@ -35,7 +56,7 @@
     private List<User> AllUsers = [];
     private bool _loading = true;
 
-    
+
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
