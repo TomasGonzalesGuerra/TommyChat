@@ -1,0 +1,230 @@
+﻿@page "/"
+@layout TestLayout
+
+@inject ChatService ChatSvc
+@implements IDisposable
+
+<!-- ══════════ TOPBAR ══════════ -->
+<header class="topbar">
+    <div class="topbar-brand">
+        <div class="brand-icon">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M7 2L12 11H2L7 2Z" fill="white" opacity=".9"/>
+            </svg>
+        </div>
+        Antarez
+    </div>
+
+    <div class="flex gap-12" style="align-items:center">
+        <span style="font-size:13px;color:var(--color-text-secondary)">Angelina Jolie</span>
+        <div class="avatar avatar-sm">AJ</div>
+
+        <button class="icon-btn" title="Configuración">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.2"/>
+                <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.42 1.42M11.54 11.54l1.41 1.41M3.05 12.95l1.42-1.42M11.54 4.46l1.41-1.41"
+                      stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+        </button>
+
+        <button class="icon-btn" title="Tema">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <path d="M8 1a7 7 0 1 0 7 7A7 7 0 0 0 8 1Zm0 12.5a5.5 5.5 0 1 1 0-11Z"
+                      fill="currentColor" opacity=".5"/>
+                <circle cx="8" cy="8" r="3.5" fill="currentColor"/>
+            </svg>
+        </button>
+    </div>
+</header>
+
+<!-- ══════════ 3-COLUMN LAYOUT ══════════ -->
+<div class="main-layout">
+
+    <!-- ── COL 1: PERFIL ── -->
+    <div>
+        <div class="card">
+            <!-- Hero morado -->
+            <div class="sidebar-hero">
+                <div class="avatar avatar-lg">AJ</div>
+                <strong style="font-size:14px;color:#EEEDFE">Angelina Jolie</strong>
+                <div class="pill pill-ghost">
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                        <rect x="1" y="2.5" width="10" height="7" rx="1.5"
+                              stroke="currentColor" stroke-width="1.1"/>
+                        <path d="M1 4l5 3.5L11 4" stroke="currentColor"
+                              stroke-width="1.1" stroke-linecap="round"/>
+                    </svg>
+                    angelina@yopmail.com
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="sidebar-body">
+                <!-- Etiquetas -->
+                <div class="flex gap-6" style="margin-bottom:12px;flex-wrap:wrap">
+                    <span class="pill pill-accent">Luces de Terror</span>
+                    <span class="pill pill-accent">Sección A</span>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats-3col">
+                    <div class="stat-mini">
+                        <div class="label">Activ.</div>
+                        <div class="value">6</div>
+                        <div class="stat-bar"><div class="stat-bar-fill" style="width:85%"></div></div>
+                    </div>
+                    <div class="stat-mini">
+                        <div class="label">Ses.</div>
+                        <div class="value">1</div>
+                        <div class="stat-bar"><div class="stat-bar-fill" style="width:20%"></div></div>
+                    </div>
+                    <div class="stat-mini">
+                        <div class="label">Asist.</div>
+                        <div class="value">92%</div>
+                        <div class="stat-bar"><div class="stat-bar-fill" style="width:92%"></div></div>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Nav -->
+                <button class="nav-btn @(_tab == "actividades" ? "active" : "")"
+                        @onclick='() => _tab = "actividades"'>
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                        <rect x="2" y="2" width="12" height="12" rx="2.5"
+                              stroke="currentColor" stroke-width="1.2"/>
+                        <path d="M5 8h6M5 5.5h6M5 10.5h4" stroke="currentColor"
+                              stroke-width="1.2" stroke-linecap="round"/>
+                    </svg>
+                    Actividades
+                    <span class="nav-count">6</span>
+                </button>
+
+                <button class="nav-btn @(_tab == "sesiones" ? "active" : "")"
+                        @onclick='() => _tab = "sesiones"'>
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                        <rect x="2" y="2" width="12" height="12" rx="2.5"
+                              stroke="currentColor" stroke-width="1.2"/>
+                        <path d="M5 5.5h2M5 8h6M5 10.5h6" stroke="currentColor"
+                              stroke-width="1.2" stroke-linecap="round"/>
+                    </svg>
+                    Sesiones
+                    <span class="nav-count">1</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── COL 2: CONTENIDO ── -->
+    <div class="main-col">
+
+        <!-- ACTIVIDADES -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-title-dot"></div>
+                    Mis Actividades
+                </div>
+                <span class="card-count">6 actividades</span>
+            </div>
+            <div class="card-body">
+                <div class="chips-grid">
+                    @foreach (var act in _actividades)
+                    {
+                        <div class="chip">
+                            <div class="chip-icon">
+                                <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                                    <rect x="1" y="3" width="10" height="8" rx="1.5"
+                                          stroke="currentColor" stroke-width="1.1"/>
+                                    <path d="M4 3V2a1 1 0 0 1 2 0v1M6 3V2a1 1 0 0 1 2 0v1"
+                                          stroke="currentColor" stroke-width="1.1"
+                                          stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            @act
+                            <span class="chip-tag">foto</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- SESIONES -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <div class="card-title-dot green"></div>
+                    Mis Sesiones
+                </div>
+                <span class="card-count">1 sesión</span>
+            </div>
+            <div class="card-body">
+                <div class="chips-grid">
+                    @foreach (var ses in _sesiones)
+                    {
+                        <div class="chip chip-green">
+                            <div class="chip-icon">
+                                <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+                                    <rect x="1" y="3" width="10" height="8" rx="1.5"
+                                          stroke="currentColor" stroke-width="1.1"/>
+                                    <path d="M4 3V2a1 1 0 0 1 2 0v1M6 3V2a1 1 0 0 1 2 0v1"
+                                          stroke="currentColor" stroke-width="1.1"
+                                          stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            @ses
+                            <span class="chip-tag">foto</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── COL 3: COMPAÑEROS ONLINE ── -->
+    <PeersPanel Peers="_peers" />
+
+</div>
+
+<!-- ══════════ CHAT WINDOWS (fixed bottom-right) ══════════ -->
+<div id="chat-container">
+    @foreach (var session in ChatSvc.OpenSessions)
+    {
+        <ChatWindow Session="session" />
+    }
+</div>
+
+@code {
+    private string _tab = "actividades";
+
+    private readonly List<string> _actividades = new()
+    {
+        "Día del Padre", "Día de la Madre",
+        "Día del Padre", "Día de la Madre",
+        "Día del Padre", "Día de la Madre",
+    };
+
+    private readonly List<string> _sesiones = new()
+    {
+        "Madre"
+    };
+
+    private readonly List<Peer> _peers = new()
+    {
+        new() { Id="lm", Name="Luis Mendoza",      Initials="LM", Color="#2d4a6a", Status="Viendo actividades" },
+        new() { Id="sc", Name="Sofía Castro",       Initials="SC", Color="#534AB7", Status="En sesiones"        },
+        new() { Id="rg", Name="Ramón García",       Initials="RG", Color="#3a5a3a", Status="Conectado"          },
+        new() { Id="vt", Name="Valentina Torres",   Initials="VT", Color="#854F0B", Status="Conectado"          },
+        new() { Id="ep", Name="Emilio Pérez",       Initials="EP", Color="#0F6E56", Status="Leyendo tareas"     },
+    };
+
+    protected override void OnInitialized()
+    {
+        ChatSvc.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        ChatSvc.OnChange -= StateHasChanged;
+    }
+}

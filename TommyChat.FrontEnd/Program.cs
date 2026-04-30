@@ -52,5 +52,8 @@ builder.Services.AddScoped<HubConnection>(sp =>
         .WithAutomaticReconnect()
         .Build();
 });
+// Registrar ChatService como singleton para que todos los componentes
+// compartan el mismo estado de chats.
+builder.Services.AddSingleton<ChatService>();
 
 await builder.Build().RunAsync();
