@@ -24,5 +24,6 @@ builder.Services.AddSweetAlert2();
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<IRepository, Repository>();
 builder.Services.AddSingleton<ChatService>();
+builder.Services.AddSingleton<PresenceService>();
 
 await builder.Build().RunAsync();

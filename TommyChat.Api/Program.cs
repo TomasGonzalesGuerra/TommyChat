@@ -33,14 +33,13 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowBlazorClient", policy =>
     {
-        policy.WithOrigins("https://localhost:7177")
+        policy.WithOrigins("https://localhost:7284")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
     });
 });
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -57,7 +56,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) && (path.StartsWithSegments("/NotifyHub")))
+                if (!string.IsNullOrEmpty(accessToken) && (path.StartsWithSegments("/hubs")))
                 {
                     context.Token = accessToken;
                 }
@@ -70,6 +69,7 @@ builder.Services.AddSignalR();
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<INotifyHub, NotifyHubService>();
 builder.Services.AddScoped<ISignalRAuditLogger, SignalRAuditLogger>();
+builder.Services.AddSingleton<IUserPresenceService, UserPresenceService>();
 
 var app = builder.Build();
 
@@ -96,5 +96,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<NotifyHub>("/Notifyhub").RequireCors("AllowBlazorClient");
+app.MapHub<PresenceHub>("/hubs/presence").RequireAuthorization();
 
 app.Run();

@@ -1,0 +1,329 @@
+﻿/* ── ROOT ───────────────────────────────────── */
+.login-root {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    padding: 24px;
+}
+
+/* ── FONDO DECORATIVO ───────────────────────── */
+.login-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.bg-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: .18;
+}
+
+.orb-1 {
+    width: 480px;
+    height: 480px;
+    background: var(--color-accent);
+    top: -120px;
+    left: -100px;
+}
+
+.orb-2 {
+    width: 320px;
+    height: 320px;
+    background: var(--color-accent-light);
+    bottom: -60px;
+    right: -80px;
+    opacity: .12;
+}
+
+.orb-3 {
+    width: 200px;
+    height: 200px;
+    background: var(--color-green);
+    bottom: 30%;
+    left: 55%;
+    opacity: .1;
+}
+
+.grid-overlay {
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+}
+
+/* ── CONTENIDO ───────────────────────────────── */
+.login-content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+}
+
+/* ── BRAND ───────────────────────────────────── */
+.login-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.brand-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--color-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 4px var(--color-accent-surface);
+}
+
+.brand-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    letter-spacing: -.3px;
+}
+
+/* ── HEADING ─────────────────────────────────── */
+.login-heading {
+    text-align: center;
+}
+
+.login-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    letter-spacing: -.5px;
+    margin-bottom: 8px;
+}
+
+.login-sub {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+
+/* ── GRID DE USUARIOS ────────────────────────── */
+.users-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 100%;
+}
+
+@media (max-width: 560px) {
+    .users-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* ── USER CARD ───────────────────────────────── */
+.user-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 14px 16px;
+    border-radius: var(--radius-lg);
+    border: .5px solid var(--color-border);
+    background: var(--color-bg-primary);
+    cursor: pointer;
+    text-align: center;
+    transition: border-color .18s ease, background .18s ease, transform .18s ease, box-shadow .18s ease;
+    overflow: hidden;
+    /* Necesario para la barra de carga */
+}
+
+    .user-card:hover:not(:disabled) {
+        border-color: var(--color-accent-border);
+        background: var(--color-bg-secondary);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0,0,0,.3);
+    }
+
+    .user-card.is-online {
+        border-color: rgba(34, 197, 94, .25);
+    }
+
+        .user-card.is-online:hover:not(:disabled) {
+            border-color: rgba(34, 197, 94, .55);
+        }
+
+    .user-card:disabled {
+        cursor: default;
+        opacity: .65;
+    }
+
+    .user-card.is-loading {
+        opacity: 1 !important;
+        border-color: var(--color-accent-border) !important;
+    }
+
+/* ── BARRA DE CARGA (top) ────────────────────── */
+.card-loading-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 2px;
+    width: 0%;
+    background: linear-gradient(90deg, var(--color-accent-light), var(--color-accent));
+    transition: none;
+    border-radius: 0 2px 2px 0;
+}
+
+.user-card.is-loading .card-loading-bar {
+    animation: loading-bar .85s ease-out forwards;
+}
+
+@keyframes loading-bar {
+    0% {
+        width: 0%;
+        opacity: 1;
+    }
+
+    80% {
+        width: 90%;
+        opacity: 1;
+    }
+
+    100% {
+        width: 100%;
+        opacity: 0;
+    }
+}
+
+/* ── AVATAR ──────────────────────────────────── */
+.uc-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.uc-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    border: 2px solid rgba(255,255,255,.15);
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.user-card:hover:not(:disabled) .uc-avatar {
+    transform: scale(1.06);
+    box-shadow: 0 4px 16px rgba(0,0,0,.35);
+}
+
+.uc-online-dot {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--color-online);
+    border: 2px solid var(--color-bg-primary);
+    animation: pulse-dot 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(34,197,94,.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 4px rgba(34,197,94,0);
+    }
+}
+
+/* ── INFO ────────────────────────────────────── */
+.uc-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.uc-name {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+}
+
+.uc-role {
+    font-size: 10.5px;
+    color: var(--color-text-muted);
+}
+
+/* ── STATUS BADGE ────────────────────────────── */
+.uc-status {
+    margin-top: 2px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: var(--radius-full);
+    font-size: 10px;
+    font-weight: 500;
+}
+
+    .status-badge.online {
+        background: var(--color-green-surface);
+        border: .5px solid rgba(34,197,94,.3);
+        color: var(--color-green-border);
+    }
+
+    .status-badge.offline {
+        background: var(--color-bg-secondary);
+        border: .5px solid var(--color-border);
+        color: var(--color-text-muted);
+    }
+
+.status-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--color-online);
+}
+
+/* ── FLECHA HOVER ────────────────────────────── */
+.uc-arrow {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    color: var(--color-accent-light);
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity .18s ease, transform .18s ease;
+}
+
+.user-card:hover:not(:disabled) .uc-arrow {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* ── FOOTER ──────────────────────────────────── */
+.login-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+}
