@@ -1,0 +1,25 @@
+﻿<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <Authorizing>
+                    <div class="loading-overlay">
+                        <div class="spinner"></div>
+                        <span>Verificando sesión...</span>
+                    </div>
+                </Authorizing>
+
+                <NotAuthorized>
+                    <WhoAreYou/>
+                </NotAuthorized>
+            </AuthorizeRouteView>
+        </Found>
+
+        <NotFound>
+            <PageTitle>No encontrado — TommyChat</PageTitle>
+            <div class="loading-overlay">
+                <p class="text-muted">La página que buscas no existe.</p>
+            </div>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

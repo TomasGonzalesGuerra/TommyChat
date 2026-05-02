@@ -1,0 +1,10 @@
+/* PeersPanel.razor.css */
+
+/* Ocultar ícono de chat por defecto, mostrarlo en hover */
+.peer-chat-icon {
+    opacity: 0;
+    color: var(--color-text-muted);
+    transition: opacity .15s;
+    flex-shrink: 0;
+}
+.peer-btn:hover .peer-chat-icon { opacity: 1; }

@@ -1,0 +1,14 @@
+/*  ChatWindow.razor.css  — estilos con scope automático de Blazor
+    Los estilos globales de .chat-window, .msg, .typing-indicator, etc.
+    están en wwwroot/css/app.css.
+    Aquí sólo van ajustes específicos del componente si fuera necesario. */
+
+/* Animación de entrada del panel */
+.chat-window {
+    animation: slide-up .2s cubic-bezier(.34,1.56,.64,1);
+}
+
+@keyframes slide-up {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}

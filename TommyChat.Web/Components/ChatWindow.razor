@@ -1,0 +1,131 @@
+@inject ChatService ChatSvc
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="chat-window @(Session.IsMinimized ? "minimized" : "")">
+
+    <!-- HEADER -->
+    <div class="chat-header" @onclick="ToggleMinimize">
+        <div class="avatar avatar-xs" style="background:@Session.Peer.Color">
+            @Session.Peer.Initials
+        </div>
+
+        <span class="chat-header-name">@Session.Peer.Name</span>
+
+        @if (Session.IsMinimized && Session.UnreadCount > 0)
+        {
+            <span class="badge badge-sm">@Session.UnreadCount</span>
+        }
+
+        <div class="chat-header-actions" @onclick:stopPropagation="true">
+            <button class="chat-hbtn" title="@(Session.IsMinimized ? "Expandir" : "Minimizar")"
+                    @onclick="ToggleMinimize">
+                @if (Session.IsMinimized)
+                {
+                    <!-- flecha arriba -->
+                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 7l3-3 3 3" stroke="currentColor" stroke-width="1.5"
+                              stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                }
+                else
+                {
+                    <!-- flecha abajo -->
+                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                        <path d="M2 3l3 3 3-3" stroke="currentColor" stroke-width="1.5"
+                              stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                }
+            </button>
+            <button class="chat-hbtn" title="Cerrar" @onclick="Close">
+                <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                    <path d="M2 2l6 6M8 2L2 8" stroke="currentColor" stroke-width="1.5"
+                          stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- BODY (oculto si minimizado) -->
+    <div class="chat-body" id="chat-body-@Session.Peer.Id">
+
+        @if (!Session.Messages.Any() && !Session.IsTyping)
+        {
+            <p class="chat-empty">Iniciá la conversación</p>
+        }
+
+        @foreach (var msg in Session.Messages)
+        {
+            <div class="msg @(msg.IsMe ? "me" : "them")">
+                <div>@msg.Text</div>
+                <div class="msg-time">@msg.Time</div>
+            </div>
+        }
+
+        @if (Session.IsTyping)
+        {
+            <div class="typing-indicator">
+                <span></span><span></span><span></span>
+            </div>
+        }
+    </div>
+
+    <!-- FOOTER -->
+    <div class="chat-footer">
+        <input class="chat-input"
+               placeholder="Escribí algo…"
+               @bind="_inputText"
+               @bind:event="oninput"
+               @onkeydown="OnKeyDown" />
+
+        <button class="chat-send" @onclick="Send" title="Enviar">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <path d="M2 8l12-6-6 12V9L2 8Z" fill="white"/>
+            </svg>
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ChatSession Session { get; set; } = default!;
+
+    private string _inputText = "";
+
+    protected override void OnInitialized()
+    {
+        ChatSvc.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Scroll al último mensaje siempre que no esté minimizado
+        if (!Session.IsMinimized)
+            await JS.InvokeVoidAsync("scrollChatToBottom", $"chat-body-{Session.Peer.Id}");
+    }
+
+    private void ToggleMinimize()
+    {
+        ChatSvc.ToggleMinimize(Session.Peer.Id);
+        if (!Session.IsMinimized)
+            ChatSvc.MarkAsRead(Session.Peer.Id);
+    }
+
+    private void Close() => ChatSvc.CloseChat(Session.Peer.Id);
+
+    private void Send()
+    {
+        if (string.IsNullOrWhiteSpace(_inputText)) return;
+        ChatSvc.SendMessage(Session.Peer.Id, _inputText.Trim());
+        _inputText = "";
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") Send();
+    }
+
+    public void Dispose()
+    {
+        ChatSvc.OnChange -= StateHasChanged;
+    }
+}

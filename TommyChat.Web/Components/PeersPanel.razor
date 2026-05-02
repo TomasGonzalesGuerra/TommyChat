@@ -1,0 +1,98 @@
+@implements IDisposable
+@inject ChatService ChatSvc
+
+<div class="card">
+
+    <!-- Header -->
+    <div class="peers-header">
+        <div class="peers-title">
+            <div class="online-dot"></div>
+            En línea
+        </div>
+        <span class="card-count">@Peers.Count</span>
+    </div>
+
+    <!-- Lista de compañeros -->
+    <div class="peers-list">
+        @foreach (var peer in Peers)
+        {
+            var session   = ChatSvc.OpenSessions.FirstOrDefault(s => s.Peer.Id == peer.Id);
+            var isChatting = session is not null;
+            var unread     = session?.UnreadCount ?? 0;
+
+            <button class="peer-btn @(isChatting ? "is-chatting" : "")"
+                    @onclick="() => OpenChat(peer)"
+                    title="Chatear con @peer.Name">
+
+                <div class="avatar avatar-sm avatar-online"
+                     style="background:@peer.Color">
+                    @peer.Initials
+                </div>
+
+                <div class="peer-info">
+                    <div class="peer-name">@peer.Name</div>
+                    <div class="peer-status">
+                        @if (session?.IsTyping == true)
+                        {
+                            <span style="color:var(--color-green);font-style:italic">
+                                escribiendo…
+                            </span>
+                        }
+                        else
+                        {
+                            @peer.Status
+                        }
+                    </div>
+                </div>
+
+                @if (unread > 0)
+                {
+                    <span class="badge badge-sm peer-unread">@unread</span>
+                }
+                else
+                {
+                    <!-- ícono chat — visible sólo en hover (CSS) -->
+                    <svg class="peer-chat-icon" width="12" height="12"
+                         viewBox="0 0 16 16" fill="none">
+                        <path d="M2 3h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H5l-3 2V4a1 1 0 0 1 1-1Z"
+                              stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                    </svg>
+                }
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<Peer> Peers { get; set; } = new();
+
+    // Mensajes semilla por peer (para demo)
+    private static readonly Dictionary<string, List<ChatMessage>> _seed = new()
+    {
+        ["lm"] = new()
+        {
+            new ChatMessage { Text = "Hola! ¿entendiste la tarea?", IsMe = false, Time = "10:32" },
+            new ChatMessage { Text = "Sí, casi toda jaja",          IsMe = true,  Time = "10:33" },
+        },
+        ["sc"] = new()
+        {
+            new ChatMessage { Text = "Che, ¿vas al acto?", IsMe = false, Time = "09:15" },
+        },
+    };
+
+    protected override void OnInitialized()
+    {
+        ChatSvc.OnChange += StateHasChanged;
+    }
+
+    private void OpenChat(Peer peer)
+    {
+        _seed.TryGetValue(peer.Id, out var seed);
+        ChatSvc.OpenChat(peer, seed);
+    }
+
+    public void Dispose()
+    {
+        ChatSvc.OnChange -= StateHasChanged;
+    }
+}
